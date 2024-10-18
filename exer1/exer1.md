@@ -17,3 +17,6 @@ mkfifo magic_mirror
 ./riddle 99>&1
 
 #Challenge 6:
+gcc chall6.c -o chall6 && ./chall6
+
+#Challenge 7:
