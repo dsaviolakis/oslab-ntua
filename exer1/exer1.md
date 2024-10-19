@@ -20,3 +20,7 @@ mkfifo magic_mirror
 gcc chall6.c -o chall6 && ./chall6
 
 #Challenge 7:
+ln .hello_there .hey_there
+
+#Challenge 8:
+touch bf00 && ./chall8 
