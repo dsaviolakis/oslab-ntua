@@ -5,7 +5,7 @@ touch .hello_there
 chmod -rw .hello_there
 
 #Challenge 2:
-killall -s SIGCONT riddle
+killall -s SIGCONT riddle #In new tab
 
 #Challenge 3:
 export ANSWER=42 && source ~/.bashrc
@@ -23,4 +23,14 @@ gcc chall6.c -o chall6 && ./chall6
 ln .hello_there .hey_there
 
 #Challenge 8:
-touch bf00 && ./chall8 
+touch bf00 && ./chall8
+
+#Challenge 9:
+nc -lvvp 49842
+
+#Challenge 10:
+touch secret_number && ln secret_number secret_number2
+
+#Challenge 11:
+touch secret_file && ./chall11 
+./riddle #In new tab
