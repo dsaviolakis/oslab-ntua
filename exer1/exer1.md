@@ -37,3 +37,6 @@ touch secret_file && ./chall11
 
 #Challenge 12:
 ./chall12 #In new tab
+
+#Challenge 13:
+truncate .hello_there -s 32K #In a new tab
