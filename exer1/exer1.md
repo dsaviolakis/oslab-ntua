@@ -47,3 +47,5 @@ truncate .hello_there -s 32K #In a new tab
 #Challenge 15:
 gcc -shared -o tier2.so -fPIC tier2.c
 
+#Challenge 16:
+#Already in tier2.so
