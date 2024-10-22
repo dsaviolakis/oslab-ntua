@@ -43,3 +43,7 @@ truncate .hello_there -s 32K #In a new tab
 
 #Challenge 14:
 ./chall14
+
+#Challenge 15:
+gcc -shared -o tier2.so -fPIC tier2.c
+
