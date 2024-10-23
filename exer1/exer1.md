@@ -49,3 +49,9 @@ gcc -shared -o tier2.so -fPIC tier2.c
 
 #Challenge 16:
 #Already in tier2.so
+
+#Challenge 17: :(
+rm tier3.so && gcc -shared -o tier3.so -fPIC tier3.c -ldl
+
+#Challenge 18:
+
