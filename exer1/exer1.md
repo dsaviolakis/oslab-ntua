@@ -23,7 +23,7 @@ gcc chall6.c -o chall6 && ./chall6
 ln .hello_there .hey_there
 
 #Challenge 8:
-touch bf00 && ./chall8
+touch bf00 && gcc chall8.c -o chall8 && ./chall8
 
 #Challenge 9:
 nc -lvvp 49842
