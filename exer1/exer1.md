@@ -26,7 +26,7 @@ ln .hello_there .hey_there
 touch bf00 && gcc chall8.c -o chall8 && ./chall8
 
 #Challenge 9:
-nc -lvvp 49842
+nc -lvvp 49842 #In a new tab
 
 #Challenge 10:
 touch secret_number && ln secret_number secret_number2
