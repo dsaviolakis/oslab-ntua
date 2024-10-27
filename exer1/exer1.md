@@ -32,8 +32,7 @@ nc -lvvp 49842 #In a new tab
 touch secret_number && ln secret_number secret_number2
 
 #Challenge 11:
-touch secret_file && ./chall11
-
+touch secret_file && ./chall11  
 ./riddle #In new tab
 
 #Challenge 12:
