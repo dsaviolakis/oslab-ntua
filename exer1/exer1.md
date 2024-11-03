@@ -54,4 +54,5 @@ gcc -shared -o tier2.so -fPIC tier2.c
 rm tier3.so && gcc -shared -o tier3.so -fPIC tier3.c -ldl
 
 #Challenge 18:
+kill -SIGURG $(pgrep riddle)
 
