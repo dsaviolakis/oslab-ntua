@@ -150,6 +150,17 @@ out:
 static int lunix_chrdev_release(struct inode *inode, struct file *filp)
 {
 	/* ? */
+	
+	/*Added by us - Start*/
+	struct lunix_chrdev_state_struct *dev;
+	dev = filp->private_data;
+	if (dev) {
+		kfree(dev);
+        	filp->private_data = NULL;
+	}
+	/*Added by us - End*/
+
+
 	return 0;
 }
 
