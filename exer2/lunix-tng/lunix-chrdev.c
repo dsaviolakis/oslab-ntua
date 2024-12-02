@@ -100,9 +100,7 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	
 	/*Added by us - Start*/
 	unsigned int minor_num = iminor(inode);
-	unsigned int major_num = imajor(inode);
 	struct lunix_chrdev_state_struct dev;
-	unsigned int sensor_id = minor_num / 8;
 	unsigned int measurement_type = minor_num % 8;
 	/*Added by us - End*/
 
