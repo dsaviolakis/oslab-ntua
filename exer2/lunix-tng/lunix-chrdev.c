@@ -49,9 +49,16 @@ static int lunix_chrdev_state_needs_refresh(struct lunix_chrdev_state_struct *st
 	
 	WARN_ON ( !(sensor = state->sensor));
 	/* ? */
+	
+	/*Added by us - Start*/
+		if (state->buf_timestamp == sensor->msr_data[state->type]->last_update)
+		return 0;
+	else
+		return 1;
+	/*Added by us - End*/
 
 	/* The following return is bogus, just for the stub to compile */
-	return 0; /* ? */
+	/*return 0;*/ /* ? */
 }
 
 /*
@@ -72,10 +79,24 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	/* ? */
 	/* Why use spinlocks? See LDD3, p. 119 */
 
+	/*Added by us - Start*/
+	spinlock_t lock;
+	spin_lock(&lock);	
+	/*Added by us - End*/
+
 	/*
 	 * Any new data available?
 	 */
 	/* ? */
+	
+	/*Added by us - Start*/
+	WARN_ON ( !(sensor = state->sensor));
+	if (lunix_chrdev_state_needs_refresh(state)) {
+		uint32_t *recent_data = sensor->msr_data[state->type]->values[0];
+		uint32_t *new_data = kmalloc();
+		memcpy(new_data, recent_data, );	
+	}
+	/*Added by us - End*/
 
 	/*
 	 * Now we can take our time to format them,
@@ -83,6 +104,10 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	 */
 
 	/* ? */
+	
+	/*Added by us - Start*/
+	spin_unlock(&lock);
+	/*Added by us - End*/
 
 	debug("leaving\n");
 	return 0;
@@ -101,6 +126,7 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	/*Added by us - Start*/
 	unsigned int minor_num = iminor(inode);
 	struct lunix_chrdev_state_struct dev;
+	unsigned int sensor_id = minor_num / 8;
 	unsigned int measurement_type = minor_num % 8;
 	/*Added by us - End*/
 
@@ -125,19 +151,12 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
         	ret = -ENOMEM;
         	goto out;
     	}
-	switch (measurement_type) {
-		case 0:
-			dev->type = BATT;
-			break;
-		case 1:
-			dev->type = LIGHT;
-			break;
-		case 2:
-			dev->type = TEMP;
-			break;
-	}
+	dev->type = measurement_type;
+	dev->sensor = &lunix_sensors[sensor_id];
+	dev->buf_lim = 0;
+	memset(dev->buf_data, 0, LUNIX_CHRDEV_BUFSZ);
+	sema_init(&dev->lock, 1);
 	filp->private_data = dev;
-
 	/*Added by us - End*/
 
 out:
