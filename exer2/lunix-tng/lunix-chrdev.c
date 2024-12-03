@@ -80,6 +80,7 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	/* Why use spinlocks? See LDD3, p. 119 */
 
 	/*Added by us - Start*/
+	WARN_ON ( !(sensor = state->sensor));
 	spinlock_t lock;
 	spin_lock(&lock);	
 	/*Added by us - End*/
@@ -90,11 +91,9 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	/* ? */
 	
 	/*Added by us - Start*/
-	WARN_ON ( !(sensor = state->sensor));
 	if (lunix_chrdev_state_needs_refresh(state)) {
-		uint32_t *recent_data = sensor->msr_data[state->type]->values[0];
-		uint32_t *new_data = kmalloc();
-		memcpy(new_data, recent_data, );	
+		uint32_t raw_data = &sensor->msr_data[state->type]->values[0];
+		state->buf_timestamp = sensor->msr_data[state->type]->last_update;
 	}
 	/*Added by us - End*/
 
