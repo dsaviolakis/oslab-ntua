@@ -69,7 +69,7 @@ static int lunix_chrdev_state_needs_refresh(struct lunix_chrdev_state_struct *st
 static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 {
 	struct lunix_sensor_struct __attribute__((unused)) *sensor;
-	
+		
 	debug("leaving\n");
 
 	/*
@@ -81,8 +81,8 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 
 	/*Added by us - Start*/
 	WARN_ON ( !(sensor = state->sensor));
-	spinlock_t lock;
-	spin_lock(&lock);	
+	uint32_t raw_data 
+	spin_lock(&sensor->lock);	
 	/*Added by us - End*/
 
 	/*
@@ -91,10 +91,13 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	/* ? */
 	
 	/*Added by us - Start*/
-	if (lunix_chrdev_state_needs_refresh(state)) {
-		uint32_t raw_data = &sensor->msr_data[state->type]->values[0];
-		state->buf_timestamp = sensor->msr_data[state->type]->last_update;
+	if (!lunix_chrdev_state_needs_refresh(state)) {
+		spin_unlock(&sensor->lock);
+		return -EAGAIN;
 	}
+	raw_data = &sensor->msr_data[state->type]->values[0];
+	state->buf_timestamp = sensor->msr_data[state->type]->last_update;
+	
 	/*Added by us - End*/
 
 	/*
@@ -105,7 +108,10 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	/* ? */
 	
 	/*Added by us - Start*/
-	spin_unlock(&lock);
+	spin_unlock(&sensor->lock);
+	down(&state->lock);
+	state->buf_lim = snprintf(state->buf_data, LUNIX_CHRDEV_BUFSZ, "%u\n", raw_data);
+	up(&state->lock);
 	/*Added by us - End*/
 
 	debug("leaving\n");
