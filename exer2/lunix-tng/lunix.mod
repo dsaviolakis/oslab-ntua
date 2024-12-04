@@ -1,5 +1,5 @@
-/home/dsavi/Git/OSLab-2024/exer2/helpcode/lunix-module.o
-/home/dsavi/Git/OSLab-2024/exer2/helpcode/lunix-chrdev.o
-/home/dsavi/Git/OSLab-2024/exer2/helpcode/lunix-ldisc.o
-/home/dsavi/Git/OSLab-2024/exer2/helpcode/lunix-protocol.o
-/home/dsavi/Git/OSLab-2024/exer2/helpcode/lunix-sensors.o
+/home/dsavi/Git/OSLab-2024/exer2/lunix-tng/lunix-module.o
+/home/dsavi/Git/OSLab-2024/exer2/lunix-tng/lunix-chrdev.o
+/home/dsavi/Git/OSLab-2024/exer2/lunix-tng/lunix-ldisc.o
+/home/dsavi/Git/OSLab-2024/exer2/lunix-tng/lunix-protocol.o
+/home/dsavi/Git/OSLab-2024/exer2/lunix-tng/lunix-sensors.o
