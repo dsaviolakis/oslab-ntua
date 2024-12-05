@@ -107,8 +107,10 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	/* ? */
 	
 	/*Added by us - Start*/
-	spin_unlock(&sensor->lock);
-	down(&state->lock);
+	spin_unlock(&sensor->lock);	
+	if(down_interruptible(&state->lock)) {
+		return -ERESTARTSYS;
+	}
 	long formated_data;
 	switch(state->type) {
 		case 0: formated_data = lookup_voltage[raw_data]; break;
