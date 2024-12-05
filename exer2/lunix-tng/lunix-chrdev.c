@@ -82,7 +82,8 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	/*Added by us - Start*/
 	WARN_ON (!(sensor = state->sensor));
 	uint32_t raw_data;
-	spin_lock(&sensor->lock);	
+	unsigned long flags;
+	spin_lock_irqsave(&sensor->lock, flags);	
 	/*Added by us - End*/
 
 	/*
@@ -92,7 +93,7 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	
 	/*Added by us - Start*/
 	if (!lunix_chrdev_state_needs_refresh(state)) {
-		spin_unlock(&sensor->lock);
+		spin_unlock_irqstore(&sensor->lock, flags);
 		return -EAGAIN;
 	}
 	raw_data = sensor->msr_data[state->type]->values[0];
@@ -107,7 +108,7 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	/* ? */
 	
 	/*Added by us - Start*/
-	spin_unlock(&sensor->lock);	
+	spin_unlock_irqstore(&sensor->lock, flags);	
 	if(down_interruptible(&state->lock)) {
 		return -ERESTARTSYS;
 	}
@@ -116,7 +117,7 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 		case 0: formated_data = lookup_voltage[raw_data]; break;
 		case 1: formated_data = lookup_temperature[raw_data]; break;
 		case 2: formated_data = lookup_light[raw_data]; break;
-		case 3: break;
+		case 3: debug("unknown type\n"); break;
 	}
 	state->buf_lim = snprintf(state->buf_data, LUNIX_CHRDEV_BUFSZ, "%ld.%03ld\n", formated_data/1000, formated_data%1000);
 	up(&state->lock);
@@ -167,9 +168,10 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	state->type = measurement_type;
 	state->sensor = &lunix_sensors[sensor_id];
 	state->buf_lim = 0;
+	state->buf_timestamp = 0;
 	memset(state->buf_data, 0, LUNIX_CHRDEV_BUFSZ);
-	sema_init(&state->lock, 1);
 	filp->private_data = state;
+	sema_init(&state->lock, 1);
 	/*Added by us - End*/
 
 out:
