@@ -118,7 +118,7 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 		case 2: formated_data = lookup_light[raw_data]; break;
 		case 3: break;
 	}
-	state->buf_lim = snprintf(state->buf_data, LUNIX_CHRDEV_BUFSZ, "%ld\n", formated_data);
+	state->buf_lim = snprintf(state->buf_data, LUNIX_CHRDEV_BUFSZ, "%ld.%03ld\n", formated_data/1000, formated_data%1000);
 	up(&state->lock);
 	/*Added by us - End*/
 
