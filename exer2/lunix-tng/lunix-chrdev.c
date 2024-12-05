@@ -136,7 +136,7 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	
 	/*Added by us - Start*/
 	unsigned int minor_num = iminor(inode);
-	struct lunix_chrdev_state_struct *dev;
+	struct lunix_chrdev_state_struct *state;
 	unsigned int sensor_id = minor_num / 8;
 	unsigned int measurement_type = minor_num % 8;
 	/*Added by us - End*/
@@ -157,17 +157,17 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	/* ? */
 
 	/*Added by us - Start*/
-	dev = kmalloc(sizeof(struct lunix_chrdev_state_struct), GFP_KERNEL);
-    	if (!dev) {
+	state = kmalloc(sizeof(struct lunix_chrdev_state_struct), GFP_KERNEL);
+    	if (!state) {
         	ret = -ENOMEM;
         	goto out;
     	}
-	dev->type = measurement_type;
-	dev->sensor = &lunix_sensors[sensor_id];
-	dev->buf_lim = 0;
-	memset(dev->buf_data, 0, LUNIX_CHRDEV_BUFSZ);
-	sema_init(&dev->lock, 1);
-	filp->private_data = dev;
+	state->type = measurement_type;
+	state->sensor = &lunix_sensors[sensor_id];
+	state->buf_lim = 0;
+	memset(state->buf_data, 0, LUNIX_CHRDEV_BUFSZ);
+	sema_init(&state->lock, 1);
+	filp->private_data = state;
 	/*Added by us - End*/
 
 out:
@@ -180,10 +180,10 @@ static int lunix_chrdev_release(struct inode *inode, struct file *filp)
 	/* ? */
 	
 	/*Added by us - Start*/
-	struct lunix_chrdev_state_struct *dev;
-	dev = filp->private_data;
-	if (dev) {
-		kfree(dev);
+	struct lunix_chrdev_state_struct *state;
+	state = filp->private_data;
+	if (state) {
+		kfree(state);
         	filp->private_data = NULL;
 	}
 	/*Added by us - End*/
@@ -221,18 +221,35 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 			/* ? */
 			/* The process needs to sleep */
 			/* See LDD3, page 153 for a hint */
+
+			/*Added by us - Start*/
+			wait_event_interruptible(sensor->wq, lunix_chrdev_state_needs_refresh(state));
+			/*Added by us - End*/
 		}
 	}
-
+	
 	/* End of file */
 	/* ? */
-	
+
+	/*Added by us - Start*/
+	if (*f_pos + cnt > state->buf_lim ) cnt = state->buf_lim - *f_pos;
+	/*Added by us - End*/
+
 	/* Determine the number of cached bytes to copy to userspace */
 	/* ? */
+	
+	/*Added by us - Start*/
+	ret = copy_to_user(usrbuf, (state->buf_data + *f_pos), cnt);
+	*f_pos += ret;
+	/*Added by us - End*/
 
 	/* Auto-rewind on EOF mode? */
 	/* ? */
 
+	/*Added by us - Start*/
+	if (*f_pos > state->buf_lim) *f_pos = 0;
+	/*Added by us - End*/
+	
 	/*
 	 * The next two lines  are just meant to suppress a compiler warning
 	 * for the "unused" out: label, and for the uninitialized "ret" value.
