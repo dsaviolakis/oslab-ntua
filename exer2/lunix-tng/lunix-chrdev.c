@@ -211,6 +211,13 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	WARN_ON(!sensor);
 
 	/* Lock? */
+
+	/*Added by us - Start*/
+	if(down_interruptible(&state->lock)) {
+		return -ERESTARTSYS;
+	}	
+	/*Added by us - End*/
+
 	/*
 	 * If the cached character device state needs to be
 	 * updated by actual sensor data (i.e. we need to report
@@ -223,7 +230,11 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 			/* See LDD3, page 153 for a hint */
 
 			/*Added by us - Start*/
+			up(&state->lock);	
 			wait_event_interruptible(sensor->wq, lunix_chrdev_state_needs_refresh(state));
+			if(down_interruptible(&state->lock)) {
+				return -ERESTARTSYS;
+			}
 			/*Added by us - End*/
 		}
 	}
@@ -260,6 +271,11 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	goto out;
 out:
 	/* Unlock? */
+
+	/*Added by us - Start*/	
+	up(&state->lock);	
+	/*Added by us - End*/
+
 	return ret;
 }
 
