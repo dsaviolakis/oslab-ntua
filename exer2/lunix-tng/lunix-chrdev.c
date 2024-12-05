@@ -70,7 +70,7 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 {
 	struct lunix_sensor_struct __attribute__((unused)) *sensor;
 		
-	debug("leaving\n");
+	debug("entering\n");
 
 	/*
 	 * Grab the raw data quickly, hold the
@@ -117,7 +117,7 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 		case 0: formated_data = lookup_voltage[raw_data]; break;
 		case 1: formated_data = lookup_temperature[raw_data]; break;
 		case 2: formated_data = lookup_light[raw_data]; break;
-		case 3: debug("unknown type\n"); break;
+		default: debug("unknown type\n"); break;
 	}
 	state->buf_lim = snprintf(state->buf_data, LUNIX_CHRDEV_BUFSZ, "%ld.%03ld\n", formated_data/1000, formated_data%1000);
 	up(&state->lock);
