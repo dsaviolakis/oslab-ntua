@@ -93,7 +93,7 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	
 	/*Added by us - Start*/
 	if (!lunix_chrdev_state_needs_refresh(state)) {
-		spin_unlock_irqstore(&sensor->lock, flags);
+		spin_unlock_irqrestore(&sensor->lock, flags);
 		return -EAGAIN;
 	}
 	raw_data = sensor->msr_data[state->type]->values[0];
@@ -108,7 +108,7 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	/* ? */
 	
 	/*Added by us - Start*/
-	spin_unlock_irqstore(&sensor->lock, flags);	
+	spin_unlock_irqrestore(&sensor->lock, flags);	
 	if(down_interruptible(&state->lock)) {
 		return -ERESTARTSYS;
 	}
@@ -235,7 +235,9 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 
 			/*Added by us - Start*/
 			up(&state->lock);	
-			wait_event_interruptible(sensor->wq, lunix_chrdev_state_needs_refresh(state));
+			if(wait_event_interruptible(sensor->wq, lunix_chrdev_state_needs_refresh(state))) {
+				return -ERESTARTSYS;
+			}
 			if(down_interruptible(&state->lock)) {
 				return -ERESTARTSYS;
 			}
@@ -262,7 +264,7 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	/* ? */
 
 	/*Added by us - Start*/
-	if (*f_pos > state->buf_lim) *f_pos = 0;
+	if (*f_pos >= state->buf_lim) *f_pos = 0;
 	/*Added by us - End*/
 	
 	/*
