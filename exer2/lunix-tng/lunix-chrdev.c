@@ -170,8 +170,8 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	state->buf_lim = 0;
 	state->buf_timestamp = 0;
 	memset(state->buf_data, 0, LUNIX_CHRDEV_BUFSZ);
-	filp->private_data = state;
 	sema_init(&state->lock, 1);
+	filp->private_data = state;
 	/*Added by us - End*/
 
 out:
