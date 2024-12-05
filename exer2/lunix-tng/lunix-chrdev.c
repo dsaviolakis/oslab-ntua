@@ -274,7 +274,7 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	 * It's true, this helpcode is a stub, and doesn't use them properly.
 	 * Remove them when you've started working on this code.
 	 */
-	ret = -ENODEV;
+	//ret = -ENODEV;
 	goto out;
 out:
 	/* Unlock? */
