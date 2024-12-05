@@ -256,7 +256,8 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	/* ? */
 	
 	/*Added by us - Start*/
-	ret = copy_to_user(usrbuf, (state->buf_data + *f_pos), cnt);
+	size_t not_copied = copy_to_user(usrbuf, (state->buf_data + *f_pos), cnt);
+	ret = cnt - not_copied;
 	*f_pos += ret;
 	/*Added by us - End*/
 
