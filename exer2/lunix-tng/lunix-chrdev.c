@@ -169,7 +169,6 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	state->sensor = &lunix_sensors[sensor_id];
 	state->buf_lim = 0;
 	state->buf_timestamp = 0;
-	memset(state->buf_data, 0, LUNIX_CHRDEV_BUFSZ);
 	sema_init(&state->lock, 1);
 	filp->private_data = state;
 	/*Added by us - End*/
@@ -257,6 +256,9 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	
 	/*Added by us - Start*/
 	size_t not_copied = copy_to_user(usrbuf, (state->buf_data + *f_pos), cnt);
+	if(not_copied) {
+		return -EFAULT;
+	}
 	ret = cnt - not_copied;
 	*f_pos += ret;
 	/*Added by us - End*/
