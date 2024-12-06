@@ -12,6 +12,8 @@
 
 /*Added by us - Start*/
 #define O_RAW 0x100000 /* Custom flag for raw mode */
+#define IOCTL_SET_IO_MODE      _IOW('l', 1, int)  // Set blocking/non-blocking mode
+#define IOCTL_SET_DATA_MODE    _IOW('l', 2, int)  // Set cooked/raw mode
 /*Added by us - End*/
 
 /*

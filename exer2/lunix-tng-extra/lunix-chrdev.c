@@ -113,7 +113,7 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 		return -ERESTARTSYS;
 	}
 	long cooked_data;
-	if(!data_mode) {
+	if(!state->data_mode) {
 		switch(state->type) {
 			case 0: cooked_data = lookup_voltage[raw_data]; break;
 			case 1: cooked_data = lookup_temperature[raw_data]; break;
@@ -123,7 +123,7 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 		state->buf_lim = snprintf(state->buf_data, LUNIX_CHRDEV_BUFSZ, "%ld.%03ld\n", cooked_data/1000, cooked_data%1000);
 	up(&state->lock);
 	} else {
-		state->buf_lim = snprintf(state->buf_data, LUNIX_CHRDEV_BUFSZ, "%ld", raw_data); 
+		state->buf_lim = snprintf(state->buf_data, LUNIX_CHRDEV_BUFSZ, "%d", raw_data); 
 	}
 	/*Added by us - End*/
 
