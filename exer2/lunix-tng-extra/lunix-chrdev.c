@@ -202,8 +202,34 @@ static int lunix_chrdev_release(struct inode *inode, struct file *filp)
 }
 
 static long lunix_chrdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
-{			
-	return -EINVAL;
+{	
+	struct lunix_chrdev_state_struct *state = filp->private_data;	
+	int mode;
+
+	switch (cmd) {
+		case IOCTL_SET_IO_MODE:
+			// Retrieve mode from user-space
+			if (get_user(mode, (int __user *)arg))
+			    return -EFAULT;
+			if (mode < 0 || mode > 1)
+			    return -EINVAL;
+			state->io_mode = mode;  // Update I/O mode
+			break;
+
+		case IOCTL_SET_DATA_MODE:
+			// Retrieve mode from user-space
+			if (get_user(mode, (int __user *)arg))
+			    return -EFAULT;
+			if (mode < 0 || mode > 1)
+			    return -EINVAL;
+			state->data_mode = mode;  // Update data mode
+			break;
+
+		default:
+			return -EINVAL;  // Command not recognized
+	}
+
+	return 0;
 }
 
 static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t cnt, loff_t *f_pos)
