@@ -10,6 +10,10 @@
 #ifndef _LUNIX_CHRDEV_H
 #define _LUNIX_CHRDEV_H
 
+/*Added by us - Start*/
+#define O_RAW 0x100000 /* Custom flag for raw mode */
+/*Added by us - End*/
+
 /*
  * Lunix:TNG character device
  */

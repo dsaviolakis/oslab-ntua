@@ -113,14 +113,18 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 		return -ERESTARTSYS;
 	}
 	long cooked_data;
-	switch(state->type) {
-		case 0: cooked_data = lookup_voltage[raw_data]; break;
-		case 1: cooked_data = lookup_temperature[raw_data]; break;
-		case 2: cooked_data = lookup_light[raw_data]; break;
-		default: debug("unknown type\n"); break;
-	}
-	state->buf_lim = snprintf(state->buf_data, LUNIX_CHRDEV_BUFSZ, "%ld.%03ld\n", cooked_data/1000, cooked_data%1000);
+	if(!data_mode) {
+		switch(state->type) {
+			case 0: cooked_data = lookup_voltage[raw_data]; break;
+			case 1: cooked_data = lookup_temperature[raw_data]; break;
+			case 2: cooked_data = lookup_light[raw_data]; break;
+			default: debug("unknown type\n"); break;
+		}
+		state->buf_lim = snprintf(state->buf_data, LUNIX_CHRDEV_BUFSZ, "%ld.%03ld\n", cooked_data/1000, cooked_data%1000);
 	up(&state->lock);
+	} else {
+		state->buf_lim = snprintf(state->buf_data, LUNIX_CHRDEV_BUFSZ, "%ld", raw_data); 
+	}
 	/*Added by us - End*/
 
 	debug("leaving\n");
@@ -170,6 +174,7 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	state->buf_lim = 0;
 	state->buf_timestamp = 0;
 	state->io_mode = (filp->f_flags & O_NONBLOCK) ? 1 : 0;
+	state->data_mode = (filp->f_flags & O_RAW) ? 1 : 0;
 	sema_init(&state->lock, 1);
 	filp->private_data = state;
 	/*Added by us - End*/
@@ -197,7 +202,7 @@ static int lunix_chrdev_release(struct inode *inode, struct file *filp)
 }
 
 static long lunix_chrdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
-{
+{			
 	return -EINVAL;
 }
 
