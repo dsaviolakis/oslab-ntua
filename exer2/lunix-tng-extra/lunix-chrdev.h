@@ -44,6 +44,7 @@ struct lunix_chrdev_state_struct {
 	 * Fixme: Any mode settings? e.g. blocking vs. non-blocking
 	 */
 	int io_mode; // 0 for blocking, 1 for non-blocking
+	int data_mode; // 0 for cooked, 1 for raw
 };
 
 /*
