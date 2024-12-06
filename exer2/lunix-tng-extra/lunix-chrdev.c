@@ -235,6 +235,15 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 			/* See LDD3, page 153 for a hint */
 
 			/*Added by us - Start*/
+			if (state->io_mode) {
+			    /* Non-blocking mode: return immediately */
+			    up(&state->lock);
+			    debug("entering non-blocking");
+			    return -EAGAIN;
+			}
+
+			/* Blocking mode: sleep until new data is available */
+			debug("entering blocking");
 			up(&state->lock);	
 			if(wait_event_interruptible(sensor->wq, lunix_chrdev_state_needs_refresh(state))) {
 				return -ERESTARTSYS;
