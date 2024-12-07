@@ -158,6 +158,7 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	/*Added by us - Start*/
 	state = kmalloc(sizeof(struct lunix_chrdev_state_struct), GFP_KERNEL);
     	if (!state) {
+		debug("kmalloc: could not allocate requested memory\n");
         	ret = -ENOMEM;
         	goto out;
     	}
