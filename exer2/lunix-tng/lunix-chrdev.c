@@ -344,7 +344,7 @@ int lunix_chrdev_init(void)
 		goto out_with_chrdev_region;
 	}
 	debug("completed successfully\n");
-	goto out;
+	return 0;
 
 out_with_chrdev_region:
 	unregister_chrdev_region(dev_no, lunix_minor_cnt);
