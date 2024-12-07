@@ -165,8 +165,8 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	state->sensor = &lunix_sensors[sensor_id];
 	state->buf_lim = 0;
 	state->buf_timestamp = 0;
-	sema_init(&state->lock, 1);
 	filp->private_data = state;
+	sema_init(&state->lock, 1);
 	/*Added by us - End*/
 
 out:
