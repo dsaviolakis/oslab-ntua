@@ -81,9 +81,8 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 
 	/*Added by us - Start*/
 	WARN_ON (!(sensor = state->sensor));
-	uint32_t raw_data;
-	unsigned long flags;
-	spin_lock_irqsave(&sensor->lock, flags);	
+	uint16_t raw_data;
+	spin_lock(&sensor->lock);	
 	/*Added by us - End*/
 
 	/*
@@ -93,7 +92,7 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	
 	/*Added by us - Start*/
 	if (!lunix_chrdev_state_needs_refresh(state)) {
-		spin_unlock_irqrestore(&sensor->lock, flags);
+		spin_unlock(&sensor->lock);
 		return -EAGAIN;
 	}
 	raw_data = sensor->msr_data[state->type]->values[0];
@@ -108,7 +107,7 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	/* ? */
 	
 	/*Added by us - Start*/
-	spin_unlock_irqrestore(&sensor->lock, flags);	
+	spin_unlock(&sensor->lock);	
 	if(down_interruptible(&state->lock)) {
 		return -ERESTARTSYS;
 	}
@@ -289,19 +288,21 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	/* ? */
 
 	/*Added by us - Start*/
-	if (*f_pos + cnt > state->buf_lim ) cnt = state->buf_lim - *f_pos;
+	size_t remain_bytes = state->buf_lim - *f_pos;
+	if (cnt > remain_bytes) cnt = remain_bytes;
 	/*Added by us - End*/
 
 	/* Determine the number of cached bytes to copy to userspace */
 	/* ? */
 	
 	/*Added by us - Start*/
-	size_t not_copied = copy_to_user(usrbuf, (state->buf_data + *f_pos), cnt);
-	if(not_copied) {
+	if(copy_to_user(usrbuf, (state->buf_data + *f_pos), cnt)) {
+		up(&state->lock);	
+		debug("returned -ERESTARTSYS 4\n");
 		return -EFAULT;
 	}
-	ret = cnt - not_copied;
-	*f_pos += ret;
+	*f_pos += cnt;
+	ret = cnt;
 	/*Added by us - End*/
 
 	/* Auto-rewind on EOF mode? */
