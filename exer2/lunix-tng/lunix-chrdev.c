@@ -244,19 +244,19 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	/* ? */
 
 	/*Added by us - Start*/
-	if (*f_pos + cnt > state->buf_lim ) cnt = state->buf_lim - *f_pos;
+	size_t remain_bytes = state->buf_lim - *f_pos;
+	if (cnt > remain_bytes) cnt = remain_bytes;
 	/*Added by us - End*/
 
 	/* Determine the number of cached bytes to copy to userspace */
 	/* ? */
 	
 	/*Added by us - Start*/
-	size_t not_copied = copy_to_user(usrbuf, (state->buf_data + *f_pos), cnt);
-	if(not_copied) {
+	if(copy_to_user(usrbuf, (state->buf_data + *f_pos), cnt)) {
 		return -EFAULT;
 	}
-	ret = cnt - not_copied;
-	*f_pos += ret;
+	*f_pos += cnt;
+	ret = cnt;
 	/*Added by us - End*/
 
 	/* Auto-rewind on EOF mode? */
