@@ -109,9 +109,6 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	
 	/*Added by us - Start*/
 	spin_unlock_irqrestore(&sensor->lock, flags);	
-	if(down_interruptible(&state->lock)) {
-		return -ERESTARTSYS;
-	}
 	long cooked_data;
 	switch(state->type) {
 		case 0: cooked_data = lookup_voltage[raw_data]; break;
@@ -120,7 +117,6 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 		default: debug("unknown type\n"); break;
 	}
 	state->buf_lim = snprintf(state->buf_data, LUNIX_CHRDEV_BUFSZ, "%ld.%03ld\n", cooked_data/1000, cooked_data%1000);
-	up(&state->lock);
 	/*Added by us - End*/
 
 	debug("leaving\n");
