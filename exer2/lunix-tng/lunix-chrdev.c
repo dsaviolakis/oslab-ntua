@@ -83,7 +83,7 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	WARN_ON (!(sensor = state->sensor));
 	uint16_t raw_data;
 	unsigned long flags;
-	spin_lock_irqsave(&sensor->lock, flags);	
+	spin_lock(&sensor->lock, flags);	
 	/*Added by us - End*/
 
 	/*
@@ -93,7 +93,7 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	
 	/*Added by us - Start*/
 	if (!lunix_chrdev_state_needs_refresh(state)) {
-		spin_unlock_irqrestore(&sensor->lock, flags);
+		spin_unlock(&sensor->lock, flags);
 		return -EAGAIN;
 	}
 	raw_data = sensor->msr_data[state->type]->values[0];
@@ -108,7 +108,7 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	/* ? */
 	
 	/*Added by us - Start*/
-	spin_unlock_irqrestore(&sensor->lock, flags);	
+	spin_unlock(&sensor->lock, flags);	
 	long cooked_data;
 	switch(state->type) {
 		case 0: cooked_data = lookup_voltage[raw_data]; break;
