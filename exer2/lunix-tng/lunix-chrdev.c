@@ -7,7 +7,6 @@
  * < Your name here >
  *
  */
-
 #include <linux/mm.h>
 #include <linux/fs.h>
 #include <linux/init.h>
@@ -51,10 +50,9 @@ static int lunix_chrdev_state_needs_refresh(struct lunix_chrdev_state_struct *st
 	/* ? */
 	
 	/*Added by us - Start*/
-	if (state->buf_timestamp == sensor->msr_data[state->type]->last_update)
-		return 0;
-	else
-		return 1;
+	debug("State Timestamp: %d\n", state->buf_timestamp);
+	debug("Last Update: %d\n", sensor->msr_data[state->type]->last_update);
+	return state->buf_timestamp != sensor->msr_data[state->type]->last_update;
 	/*Added by us - End*/
 
 	/* The following return is bogus, just for the stub to compile */
@@ -81,9 +79,8 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 
 	/*Added by us - Start*/
 	WARN_ON (!(sensor = state->sensor));
-	uint16_t raw_data;
-	unsigned long flags;
-	spin_lock(&sensor->lock, flags);	
+	uint32_t raw_data;
+	spin_lock(&sensor->lock);	
 	/*Added by us - End*/
 
 	/*
@@ -93,7 +90,8 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	
 	/*Added by us - Start*/
 	if (!lunix_chrdev_state_needs_refresh(state)) {
-		spin_unlock(&sensor->lock, flags);
+		spin_unlock(&sensor->lock);
+		debug("returned no refresh\n");
 		return -EAGAIN;
 	}
 	raw_data = sensor->msr_data[state->type]->values[0];
@@ -108,13 +106,17 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	/* ? */
 	
 	/*Added by us - Start*/
-	spin_unlock(&sensor->lock, flags);	
+	spin_unlock(&sensor->lock);
 	long cooked_data;
 	switch(state->type) {
-		case 0: cooked_data = lookup_voltage[raw_data]; break;
-		case 1: cooked_data = lookup_temperature[raw_data]; break;
-		case 2: cooked_data = lookup_light[raw_data]; break;
-		default: debug("unknown type\n"); break;
+		case BATT: 
+			cooked_data = lookup_voltage[raw_data]; break;
+		case TEMP: 
+			cooked_data = lookup_temperature[raw_data]; break;
+		case LIGHT: 
+			cooked_data = lookup_light[raw_data]; break;
+		default: 
+			debug("unknown type\n"); break;
 	}
 	state->buf_lim = snprintf(state->buf_data, LUNIX_CHRDEV_BUFSZ, "%ld.%03ld\n", cooked_data/1000, cooked_data%1000);
 	/*Added by us - End*/
@@ -166,8 +168,8 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	state->sensor = &lunix_sensors[sensor_id];
 	state->buf_lim = 0;
 	state->buf_timestamp = 0;
-	filp->private_data = state;
 	sema_init(&state->lock, 1);
+	filp->private_data = state;
 	ret = 0;
 	/*Added by us - End*/
 
@@ -205,6 +207,8 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	struct lunix_sensor_struct *sensor;
 	struct lunix_chrdev_state_struct *state;
 
+	debug("entering\n");
+		
 	state = filp->private_data;
 	WARN_ON(!state);
 
@@ -215,6 +219,7 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 
 	/*Added by us - Start*/
 	if(down_interruptible(&state->lock)) {
+		debug("returned -ERESTARTSYS 1\n");
 		return -ERESTARTSYS;
 	}	
 	/*Added by us - End*/
@@ -233,13 +238,16 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 			/*Added by us - Start*/
 			up(&state->lock);	
 			if(wait_event_interruptible(sensor->wq, lunix_chrdev_state_needs_refresh(state))) {
+				debug("returned -ERESTARTSYS 2\n");
 				return -ERESTARTSYS;
 			}
 			if(down_interruptible(&state->lock)) {
+				debug("returned -ERESTARTSYS 3\n");
 				return -ERESTARTSYS;
-			}
+			}	
 			/*Added by us - End*/
 		}
+		debug("leaving while\n");
 	}
 	
 	/* End of file */
@@ -256,6 +264,7 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	/*Added by us - Start*/
 	if(copy_to_user(usrbuf, (state->buf_data + *f_pos), cnt)) {
 		up(&state->lock);	
+		debug("returned -ERESTARTSYS 4\n");
 		return -EFAULT;
 	}
 	*f_pos += cnt;
@@ -281,7 +290,8 @@ out:
 	/* Unlock? */
 
 	/*Added by us - Start*/	
-	up(&state->lock);	
+	up(&state->lock);
+	debug("leaving\n");	
 	/*Added by us - End*/
 
 	return ret;
@@ -344,7 +354,7 @@ int lunix_chrdev_init(void)
 		goto out_with_chrdev_region;
 	}
 	debug("completed successfully\n");
-	return 0;
+	goto out;
 
 out_with_chrdev_region:
 	unregister_chrdev_region(dev_no, lunix_minor_cnt);
