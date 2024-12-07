@@ -168,6 +168,7 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	state->buf_timestamp = 0;
 	filp->private_data = state;
 	sema_init(&state->lock, 1);
+	ret = 0;
 	/*Added by us - End*/
 
 out:
