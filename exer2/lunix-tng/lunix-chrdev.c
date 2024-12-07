@@ -81,7 +81,7 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 
 	/*Added by us - Start*/
 	WARN_ON (!(sensor = state->sensor));
-	uint32_t raw_data;
+	uint16_t raw_data;
 	unsigned long flags;
 	spin_lock_irqsave(&sensor->lock, flags);	
 	/*Added by us - End*/
