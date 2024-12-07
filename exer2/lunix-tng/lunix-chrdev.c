@@ -255,6 +255,7 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	
 	/*Added by us - Start*/
 	if(copy_to_user(usrbuf, (state->buf_data + *f_pos), cnt)) {
+		up(&state->lock);	
 		return -EFAULT;
 	}
 	*f_pos += cnt;
