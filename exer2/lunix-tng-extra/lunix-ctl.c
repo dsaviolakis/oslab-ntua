@@ -7,185 +7,159 @@
 
 #define IOCTL_SET_IO_MODE      _IOW('l', 1, int)  // Set blocking/non-blocking mode
 #define IOCTL_SET_DATA_MODE    _IOW('l', 2, int)  // Set cooked/raw mode
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 1024       // Buffer size for reading data
 
-// Function to handle the configuration of a device
+// Function to validate and parse IO mode
+int parse_io_mode(const char *mode) {
+    if (strcmp(mode, "blocking") == 0) return 0;
+    if (strcmp(mode, "non-blocking") == 0) return 1;
+    return -1;
+}
+
+// Function to validate and parse data mode
+int parse_data_mode(const char *mode) {
+    if (strcmp(mode, "cooked") == 0) return 0;
+    if (strcmp(mode, "raw") == 0) return 1;
+    return -1;
+}
+
+// Function to parse device range
+int parse_range(const char *range, int *start, int *end) {
+    if (strcmp(range, "all") == 0) {
+        *start = 0;
+        *end = 15;
+        return 1;
+    }
+    if (sscanf(range, "%d-%d", start, end) == 2 && *start >= 0 && *end < 16 && *start <= *end) {
+        return 1;
+    }
+    if (sscanf(range, "%d", start) == 1 && *start >= 0 && *start < 16) {
+        *end = *start;
+        return 1;
+    }
+    return 0;
+}
+
+// Function to configure a device
 void configure_device(const char *device, int io_mode, int data_mode) {
-	int fd = open(device, O_RDWR);
-	if (fd < 0) {
-		fprintf(stderr, "%s: ", device);
-		perror("Failed to open device");
-		return;
-	}
+    int fd = open(device, O_RDWR);
+    if (fd < 0) {
+        perror(device);
+        return;
+    }
 
-	// Set IO mode
-	if (ioctl(fd, IOCTL_SET_IO_MODE, &io_mode) < 0) {
-		fprintf(stderr, "%s: ", device);
-		perror("Failed to set IO mode");
-		close(fd);
-		return;
-	}
-	printf("IO mode set to %d for device %s\n", io_mode, device);
+    if (ioctl(fd, IOCTL_SET_IO_MODE, &io_mode) < 0) {
+        perror("IO mode failed");
+        close(fd);
+        return;
+    }
 
-	// Set data mode
-	if (ioctl(fd, IOCTL_SET_DATA_MODE, &data_mode) < 0) {
-		fprintf(stderr, "%s: ", device);
-		perror("Failed to set data mode");
-		close(fd);
-		return;
-	}
-	printf("Data mode set to %d for device %s\n", data_mode, device);
+    if (ioctl(fd, IOCTL_SET_DATA_MODE, &data_mode) < 0) {
+        perror("Data mode failed");
+        close(fd);
+        return;
+    }
 
-	// Close the device file
-	close(fd);
+    printf("Configured %s: IO mode=%d, Data mode=%d\n", device, io_mode, data_mode);
+    close(fd);
 }
 
-// Function to handle the range of devices
-void configure_range(int start, int end, int io_mode, int data_mode) {
-	for (int i = start; i <= end; i++) {
-		char device_temp[64], device_batt[64], device_light[64];
-
-		// Create device names for each sensor
-		snprintf(device_temp, sizeof(device_temp), "/dev/lunix%d-temp", i);
-		snprintf(device_batt, sizeof(device_batt), "/dev/lunix%d-batt", i);
-		snprintf(device_light, sizeof(device_light), "/dev/lunix%d-light", i);
-
-		// Configure each sensor for this device
-		configure_device(device_temp, io_mode, data_mode);
-		configure_device(device_batt, io_mode, data_mode);
-		configure_device(device_light, io_mode, data_mode);
-	}
-}
-
-// Function to read data from a device
+// Function to read from a device
 void read_device(const char *device) {
-	char buffer[BUFFER_SIZE];
-	int fd = open(device, O_RDONLY);
-	if (fd < 0) {
-		fprintf(stderr, "%s: ", device);
-		perror("Failed to open device");
-		return;
-	}
+    char buffer[BUFFER_SIZE];
+    int fd = open(device, O_RDONLY);
+    if (fd < 0) {
+        perror(device);
+        return;
+    }
 
-	ssize_t bytes_read = read(fd, buffer, sizeof(buffer) - 1);
-	if (bytes_read < 0) {
-		fprintf(stderr, "%s: ", device);
-		perror("Failed to read from device");
-		close(fd);
-		return;
-	}
+    ssize_t bytes_read = read(fd, buffer, sizeof(buffer) - 1);
+    if (bytes_read < 0) {
+        perror("Read failed");
+        close(fd);
+        return;
+    }
 
-	// Null-terminate the read data and print it
-	buffer[bytes_read] = '\0';
-	printf("Data from %s: %s", device, buffer);
-
-	// Close the device file
-	close(fd);
+    buffer[bytes_read] = '\0';
+    printf("Data from %s: %s\n", device, buffer);
+    close(fd);
 }
 
-// Function to read data from a range of devices
+// Function to configure devices in a range
+void configure_range(int start, int end, int io_mode, int data_mode) {
+    for (int i = start; i <= end; i++) {
+        char device_temp[64], device_batt[64], device_light[64];
+        snprintf(device_temp, sizeof(device_temp), "/dev/lunix%d-temp", i);
+        snprintf(device_batt, sizeof(device_batt), "/dev/lunix%d-batt", i);
+        snprintf(device_light, sizeof(device_light), "/dev/lunix%d-light", i);
+
+        configure_device(device_temp, io_mode, data_mode);
+        configure_device(device_batt, io_mode, data_mode);
+        configure_device(device_light, io_mode, data_mode);
+    }
+}
+
+// Function to read devices in a range
 void read_range(int start, int end) {
-	for (int i = start; i <= end; i++) {
-		char device_temp[64], device_batt[64], device_light[64];
+    for (int i = start; i <= end; i++) {
+        char device_temp[64], device_batt[64], device_light[64];
+        snprintf(device_temp, sizeof(device_temp), "/dev/lunix%d-temp", i);
+        snprintf(device_batt, sizeof(device_batt), "/dev/lunix%d-batt", i);
+        snprintf(device_light, sizeof(device_light), "/dev/lunix%d-light", i);
 
-		// Create device names for each sensor
-		snprintf(device_temp, sizeof(device_temp), "/dev/lunix%d-temp", i);
-		snprintf(device_batt, sizeof(device_batt), "/dev/lunix%d-batt", i);
-		snprintf(device_light, sizeof(device_light), "/dev/lunix%d-light", i);
-
-		// Read data from each sensor for this device
-		read_device(device_temp);
-		read_device(device_batt);
-		read_device(device_light);
-	}
+        read_device(device_temp);
+        read_device(device_batt);
+        read_device(device_light);
+    }
 }
 
+// Main function
 int main(int argc, char *argv[]) {
-	if (argc == 1) {
-		fprintf(stderr, "Must provide arguments. Example usage:\n");
-		fprintf(stderr, "\tConfigure driver: %s configure <device_range|all> <io_mode> <data_mode>\n", argv[0]);
-		fprintf(stderr, "\tRead data: %s read <device_range|all>\n", argv[0]);
-		return 1;
-	}
+    if (argc < 2) {
+        fprintf(stderr, "Usage:\n");
+        fprintf(stderr, "  Configure: %s configure <device|range|all> <io_mode> <data_mode>\n", argv[0]);
+        fprintf(stderr, "  Read:      %s read <device|range|all>\n", argv[0]);
+        return 1;
+    }
 
-	if (strcmp(argv[1], "configure") == 0) {
-		if (argc < 5) {
-			fprintf(stderr, "Usage: %s configure <device_range|all> <io_mode> <data_mode>\n", argv[0]);
-			return 1;
-		}
+    const char *command = argv[1];
+    if (strcmp(command, "configure") == 0) {
+        if (argc != 5) {
+            fprintf(stderr, "Usage: %s configure <device|range|all> <io_mode> <data_mode>\n", argv[0]);
+            return 1;
+        }
 
-		int io_mode, data_mode;
-		if (strcmp(argv[3], "blocking") == 0) {
-			io_mode = 0;
-		} else if (strcmp(argv[3], "non-blocking") == 0) {
-			io_mode = 1;
-		} else {
-			fprintf(stderr, "Available io_modes: blocking, non-blocking\n");
-		}
-		
-		if (strcmp(argv[4], "cooked") == 0) {
-			data_mode = 0;
-		} else if (strcmp(argv[4], "raw") == 0) {
-			data_mode = 1;
-		} else {
-			fprintf(stderr, "Available data_modes: cooked, raw\n");
-		}
+        int io_mode = parse_io_mode(argv[3]);
+        int data_mode = parse_data_mode(argv[4]);
+        if (io_mode == -1 || data_mode == -1) {
+            fprintf(stderr, "Invalid modes. IO modes: blocking, non-blocking. Data modes: cooked, raw.\n");
+            return 1;
+        }
 
-		if (strcmp(argv[2], "all") == 0) {
-			// Configure all devices (lunix0-15)
-			configure_range(0, 15, io_mode, data_mode);
-		} else {
-			// Handle range of devices (e.g., 1-5)
-			char *range = argv[2];
-			int start, end;
+        int start, end;
+        if (parse_range(argv[2], &start, &end)) {
+            configure_range(start, end, io_mode, data_mode);
+        } else {
+            fprintf(stderr, "Invalid device or range. Use <start>-<end>, single device, or 'all'.\n");
+            return 1;
+        }
+    } else if (strcmp(command, "read") == 0) {
+        if (argc != 3) {
+            fprintf(stderr, "Usage: %s read <device|range|all>\n", argv[0]);
+            return 1;
+        }
 
-			if (sscanf(range, "%d-%d", &start, &end) == 2) {
-				// Configure the range of devices
-				if (start >= 0 && end < 16 && start <= end) {
-					configure_range(start, end, io_mode, data_mode);
-				} else {
-					fprintf(stderr, "Invalid range specified\n");
-					return 1;
-				}
-			} else {
-			    // Invalid range format
-			    fprintf(stderr, "Invalid range format. Use <start>-<end> or 'all'.\n");
-			    return 1;
-			}
-		}
-	} else if (strcmp(argv[1], "read") == 0) {
-		if (argc < 3) {
-			fprintf(stderr, "Usage: %s read <device_range|all>\n", argv[0]);
-			return 1;
-		}
+        int start, end;
+        if (parse_range(argv[2], &start, &end)) {
+            read_range(start, end);
+        } else {
+            fprintf(stderr, "Invalid device or range. Use <start>-<end>, single device, or 'all'.\n");
+            return 1;
+        }
+    } else {
+        fprintf(stderr, "Unknown command '%s'. Use 'configure' or 'read'.\n", command);
+        return 1;
+    }
 
-		if (strcmp(argv[2], "all") == 0) {
-			// Read from all devices (lunix1-16)
-			read_range(0, 15);
-		} else {
-			// Handle range of devices (e.g., 1-5)
-			char *range = argv[2];
-			int start, end;
-
-			if (sscanf(range, "%d-%d", &start, &end) == 2) {
-				// Read from the range of devices
-				if (start >= 0 && end <= 15 && start <= end) {
-					read_range(start, end);
-				} else {
-		    			fprintf(stderr, "Invalid range specified\n");
-		    			return 1;
-				}
-			} else {
-				// Invalid range format
-				fprintf(stderr, "Invalid range format. Use <start>-<end> or 'all'.\n");
-				return 1;
-			}
-		}
-	} else {
-		fprintf(stderr, "Unknown command. Use 'configure' or 'read'.\n");
-		return 1;
-	}	
-	return 0;
+    return 0;
 }
-
-
