@@ -1,401 +1,166 @@
-/*
- * lunix-chrdev.c
- *
- * Implementation of character devices
- * for Lunix:TNG
- *
- * < Your name here >
- *
- */
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <string.h>
 
-#include <linux/mm.h>
-#include <linux/fs.h>
-#include <linux/init.h>
-#include <linux/list.h>
-#include <linux/cdev.h>
-#include <linux/poll.h>
-#include <linux/slab.h>
-#include <linux/sched.h>
-#include <linux/ioctl.h>
-#include <linux/types.h>
-#include <linux/module.h>
-#include <linux/kernel.h>
-#include <linux/mmzone.h>
-#include <linux/vmalloc.h>
-#include <linux/spinlock.h>
+#define IOCTL_SET_IO_MODE      _IOW('l', 1, int)  // Set blocking/non-blocking mode
+#define IOCTL_SET_DATA_MODE    _IOW('l', 2, int)  // Set cooked/raw mode
+#define BUFFER_SIZE 1024       // Buffer size for reading data
 
-#include "lunix.h"
-#include "lunix-chrdev.h"
-#include "lunix-lookup.h"
-
-/*
- * Global data
- */
-struct cdev lunix_chrdev_cdev;
-
-/*
- * Just a quick [unlocked] check to see if the cached
- * chrdev state needs to be updated from sensor measurements.
- */
-/*
- * Declare a prototype so we can define the "unused" attribute and keep
- * the compiler happy. This function is not yet used, because this helpcode
- * is a stub.
- */
-static int __attribute__((unused)) lunix_chrdev_state_needs_refresh(struct lunix_chrdev_state_struct *);
-static int lunix_chrdev_state_needs_refresh(struct lunix_chrdev_state_struct *state)
-{
-	struct lunix_sensor_struct *sensor;
-	
-	WARN_ON ( !(sensor = state->sensor));
-	/* ? */
-	
-	/*Added by us - Start*/
-	return state->buf_timestamp != sensor->msr_data[state->type]->last_update; /*Return 0 if no refresh needed*/
-	/*Added by us - End*/
-
-	/* The following return is bogus, just for the stub to compile */
-	/*return 0;*/ /* ? */
+// Function to validate and parse IO mode
+int parse_io_mode(const char *mode) {
+    if (strcmp(mode, "blocking") == 0) return 0;
+    if (strcmp(mode, "non-blocking") == 0) return 1;
+    return -1;
 }
 
-/*
- * Updates the cached state of a character device
- * based on sensor data. Must be called with the
- * character device state lock held.
- */
-static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
-{
-	struct lunix_sensor_struct __attribute__((unused)) *sensor;
-		
-	debug("entering\n");
-
-	/*
-	 * Grab the raw data quickly, hold the
-	 * spinlock for as little as possible.
-	 */
-	/* ? */
-	/* Why use spinlocks? See LDD3, p. 119 */
-
-	/*Added by us - Start*/
-	WARN_ON (!(sensor = state->sensor));
-	uint32_t raw_data;
-	spin_lock(&sensor->lock);	
-	/*Added by us - End*/
-
-	/*
-	 * Any new data available?
-	 */
-	/* ? */
-	
-	/*Added by us - Start*/
-	if (!lunix_chrdev_state_needs_refresh(state)) {
-		spin_unlock(&sensor->lock);
-		return -EAGAIN;
-	}
-	raw_data = sensor->msr_data[state->type]->values[0];
-	state->buf_timestamp = sensor->msr_data[state->type]->last_update;	
-	/*Added by us - End*/
-
-	/*
-	 * Now we can take our time to format them,
-	 * holding only the private state semaphore
-	 */
-
-	/* ? */
-	
-	/*Added by us - Start*/
-	spin_unlock(&sensor->lock);	
-	long cooked_data;
-	if(!state->data_mode) {
-		switch(state->type) {
-			case 0: cooked_data = lookup_voltage[raw_data]; break;
-			case 1: cooked_data = lookup_temperature[raw_data]; break;
-			case 2: cooked_data = lookup_light[raw_data]; break;
-			default: debug("unknown type\n"); break;
-		}
-		state->buf_lim = snprintf(state->buf_data, LUNIX_CHRDEV_BUFSZ, "%ld.%03ld\n", cooked_data/1000, cooked_data%1000);
-	} else {
-		state->buf_lim = snprintf(state->buf_data, LUNIX_CHRDEV_BUFSZ, "%d", raw_data); 
-	}
-	/*Added by us - End*/
-
-	debug("leaving\n");
-	return 0;
+// Function to validate and parse data mode
+int parse_data_mode(const char *mode) {
+    if (strcmp(mode, "cooked") == 0) return 0;
+    if (strcmp(mode, "raw") == 0) return 1;
+    return -1;
 }
 
-/*************************************
- * Implementation of file operations
- * for the Lunix character device
- *************************************/
-
-static int lunix_chrdev_open(struct inode *inode, struct file *filp)
-{
-	/* Declarations */
-	/* ? */
-	
-	/*Added by us - Start*/
-	unsigned int minor_num = iminor(inode);
-	struct lunix_chrdev_state_struct *state;
-	unsigned int sensor_id = minor_num / 8;
-	unsigned int measurement_type = minor_num % 8;
-	/*Added by us - End*/
-
-	int ret;
-
-	debug("entering\n");
-	ret = -ENODEV;
-	if ((ret = nonseekable_open(inode, filp)) < 0)
-		goto out;
-
-	/*
-	 * Associate this open file with the relevant sensor based on
-	 * the minor number of the device node [/dev/sensor<NO>-<TYPE>]
-	 */
-	
-	/* Allocate a new Lunix character device private state structure */
-	/* ? */
-
-	/*Added by us - Start*/
-	state = kmalloc(sizeof(struct lunix_chrdev_state_struct), GFP_KERNEL);
-    	if (!state) {
-        	ret = -ENOMEM;
-        	goto out;
-    	}
-	state->type = measurement_type;
-	state->sensor = &lunix_sensors[sensor_id];
-	state->buf_lim = 0;
-	state->buf_timestamp = 0;
-	state->io_mode = (filp->f_flags & O_NONBLOCK) ? 1 : 0;
-	state->data_mode = (filp->f_flags & O_RAW) ? 1 : 0;
-	sema_init(&state->lock, 1);
-	filp->private_data = state;
-	/*Added by us - End*/
-
-out:
-	debug("leaving, with ret = %d\n", ret);
-	return ret;
+// Function to determine if the input specifies a single sensor
+int parse_sensor(const char *input, char *device_name, char *sensor_name) {
+    int device_number;
+    if (sscanf(input, "%d-%s", &device_number, sensor_name) == 2) {
+        snprintf(device_name, 64, "/dev/lunix%d-%s", device_number, sensor_name);
+        return 1; // Specific sensor
+    } else if (sscanf(input, "%d", &device_number) == 1) {
+        return 0; // Entire device (all sensors)
+    }
+    return -1; // Invalid input
 }
 
-static int lunix_chrdev_release(struct inode *inode, struct file *filp)
-{
-	/* ? */
-	
-	/*Added by us - Start*/
-	struct lunix_chrdev_state_struct *state;
-	state = filp->private_data;
-	if (state) {
-		kfree(state);
-        	filp->private_data = NULL;
-	}
-	/*Added by us - End*/
+// Function to configure a device or specific sensor
+void configure_device(const char *device, int io_mode, int data_mode) {
+    int fd = open(device, O_RDWR);
+    if (fd < 0) {
+        perror(device);
+        return;
+    }
 
+    if (ioctl(fd, IOCTL_SET_IO_MODE, &io_mode) < 0) {
+        perror("IO mode failed");
+        close(fd);
+        return;
+    }
 
-	return 0;
+    if (ioctl(fd, IOCTL_SET_DATA_MODE, &data_mode) < 0) {
+        perror("Data mode failed");
+        close(fd);
+        return;
+    }
+
+    printf("Configured %s: IO mode=%d, Data mode=%d\n", device, io_mode, data_mode);
+    close(fd);
 }
 
-static long lunix_chrdev_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
-{	
-	struct lunix_chrdev_state_struct *state = filp->private_data;	
-	int mode;
+// Function to configure all sensors for a device
+void configure_device_sensors(int device_number, int io_mode, int data_mode) {
+    char device_temp[64], device_batt[64], device_light[64];
+    snprintf(device_temp, sizeof(device_temp), "/dev/lunix%d-temp", device_number);
+    snprintf(device_batt, sizeof(device_batt), "/dev/lunix%d-batt", device_number);
+    snprintf(device_light, sizeof(device_light), "/dev/lunix%d-light", device_number);
 
-	switch (cmd) {
-		case IOCTL_SET_IO_MODE:
-			// Retrieve mode from user-space
-			if (get_user(mode, (int __user *)arg))
-			    return -EFAULT;
-			if (mode < 0 || mode > 1)
-			    return -EINVAL;
-			state->io_mode = mode;  // Update I/O mode
-			break;
-
-		case IOCTL_SET_DATA_MODE:
-			// Retrieve mode from user-space
-			if (get_user(mode, (int __user *)arg))
-			    return -EFAULT;
-			if (mode < 0 || mode > 1)
-			    return -EINVAL;
-			state->data_mode = mode;  // Update data mode
-			break;
-
-		default:
-			return -EINVAL;  // Command not recognized
-	}
-
-	return 0;
+    configure_device(device_temp, io_mode, data_mode);
+    configure_device(device_batt, io_mode, data_mode);
+    configure_device(device_light, io_mode, data_mode);
 }
 
-static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t cnt, loff_t *f_pos)
-{
-	ssize_t ret;
+// Function to read from a device or specific sensor
+void read_device(const char *device) {
+    char buffer[BUFFER_SIZE];
+    int fd = open(device, O_RDONLY);
+    if (fd < 0) {
+        perror(device);
+        return;
+    }
 
-	struct lunix_sensor_struct *sensor;
-	struct lunix_chrdev_state_struct *state;
+    ssize_t bytes_read = read(fd, buffer, sizeof(buffer) - 1);
+    if (bytes_read < 0) {
+        perror("Read failed");
+        close(fd);
+        return;
+    }
 
-	state = filp->private_data;
-	WARN_ON(!state);
-
-	sensor = state->sensor;
-	WARN_ON(!sensor);
-
-	/* Lock? */
-
-	/*Added by us - Start*/
-	if(down_interruptible(&state->lock)) {
-		return -ERESTARTSYS;
-	}	
-	/*Added by us - End*/
-
-	/*
-	 * If the cached character device state needs to be
-	 * updated by actual sensor data (i.e. we need to report
-	 * on a "fresh" measurement, do so
-	 */
-	if (*f_pos == 0) {
-		while (lunix_chrdev_state_update(state) == -EAGAIN) {
-			/* ? */
-			/* The process needs to sleep */
-			/* See LDD3, page 153 for a hint */
-
-			/*Added by us - Start*/
-			if (state->io_mode) {
-			    /* Non-blocking mode: return immediately */
-			    up(&state->lock);
-			    debug("entering non-blocking");
-			    return -EAGAIN;
-			}
-
-			/* Blocking mode: sleep until new data is available */
-			debug("entering blocking");
-			up(&state->lock);	
-			if(wait_event_interruptible(sensor->wq, lunix_chrdev_state_needs_refresh(state))) {
-				return -ERESTARTSYS;
-			}
-			if(down_interruptible(&state->lock)) {
-				return -ERESTARTSYS;
-			}
-			/*Added by us - End*/
-		}
-	}
-	
-	/* End of file */
-	/* ? */
-
-	/*Added by us - Start*/
-	size_t remain_bytes = state->buf_lim - *f_pos;
-	if (cnt > remain_bytes) cnt = remain_bytes;
-	/*Added by us - End*/
-
-	/* Determine the number of cached bytes to copy to userspace */
-	/* ? */
-	
-	/*Added by us - Start*/
-	if(copy_to_user(usrbuf, (state->buf_data + *f_pos), cnt)) {
-		up(&state->lock);	
-		debug("returned -ERESTARTSYS 4\n");
-		return -EFAULT;
-	}
-	*f_pos += cnt;
-	ret = cnt;
-	/*Added by us - End*/
-
-	/* Auto-rewind on EOF mode? */
-	/* ? */
-
-	/*Added by us - Start*/
-	if (*f_pos >= state->buf_lim) *f_pos = 0;
-	/*Added by us - End*/
-	
-	/*
-	 * The next two lines  are just meant to suppress a compiler warning
-	 * for the "unused" out: label, and for the uninitialized "ret" value.
-	 * It's true, this helpcode is a stub, and doesn't use them properly.
-	 * Remove them when you've started working on this code.
-	 */
-	//ret = -ENODEV;
-	goto out;
-out:
-	/* Unlock? */
-
-	/*Added by us - Start*/	
-	up(&state->lock);	
-	/*Added by us - End*/
-
-	return ret;
+    buffer[bytes_read] = '\0';
+    printf("Data from %s: %s\n", device, buffer);
+    close(fd);
 }
 
-static int lunix_chrdev_mmap(struct file *filp, struct vm_area_struct *vma)
-{
-	return -EINVAL;
+// Function to read all sensors for a device
+void read_device_sensors(int device_number) {
+    char device_temp[64], device_batt[64], device_light[64];
+    snprintf(device_temp, sizeof(device_temp), "/dev/lunix%d-temp", device_number);
+    snprintf(device_batt, sizeof(device_batt), "/dev/lunix%d-batt", device_number);
+    snprintf(device_light, sizeof(device_light), "/dev/lunix%d-light", device_number);
+
+    read_device(device_temp);
+    read_device(device_batt);
+    read_device(device_light);
 }
 
-static struct file_operations lunix_chrdev_fops = 
-{
-	.owner          = THIS_MODULE,
-	.open           = lunix_chrdev_open,
-	.release        = lunix_chrdev_release,
-	.read           = lunix_chrdev_read,
-	.unlocked_ioctl = lunix_chrdev_ioctl,
-	.mmap           = lunix_chrdev_mmap
-};
+// Main function
+int main(int argc, char *argv[]) {
+    if (argc < 2) {
+        fprintf(stderr, "Usage:\n");
+        fprintf(stderr, "  Configure: %s configure <device|sensor|range|all> <io_mode> <data_mode>\n", argv[0]);
+        fprintf(stderr, "  Read:      %s read <device|sensor|range|all>\n", argv[0]);
+        return 1;
+    }
 
-int lunix_chrdev_init(void)
-{
-	/*
-	 * Register the character device with the kernel, asking for
-	 * a range of minor numbers (number of sensors * 8 measurements / sensor)
-	 * beginning with LINUX_CHRDEV_MAJOR:0
-	 */
-	int ret;
-	dev_t dev_no;
-	unsigned int lunix_minor_cnt = lunix_sensor_cnt << 3;
+    const char *command = argv[1];
+    if (strcmp(command, "configure") == 0) {
+        if (argc != 5) {
+            fprintf(stderr, "Usage: %s configure <device|sensor|range|all> <io_mode> <data_mode>\n", argv[0]);
+            return 1;
+        }
 
-	debug("initializing character device\n");
-	cdev_init(&lunix_chrdev_cdev, &lunix_chrdev_fops);
-	lunix_chrdev_cdev.owner = THIS_MODULE;
-	
-	dev_no = MKDEV(LUNIX_CHRDEV_MAJOR, 0);
-	/* ? */
-	/* register_chrdev_region? */
-	
-	/*Added by us - Start*/
-	ret = register_chrdev_region(dev_no, lunix_minor_cnt, "lunix");	
-	/*Added by us - End*/
+        int io_mode = parse_io_mode(argv[3]);
+        int data_mode = parse_data_mode(argv[4]);
+        if (io_mode == -1 || data_mode == -1) {
+            fprintf(stderr, "Invalid modes. IO modes: blocking, non-blocking. Data modes: cooked, raw.\n");
+            return 1;
+        }
 
-	/* Since this code is a stub, exit early */
-	//return 0;
+        char device_name[64], sensor_name[64];
+        int result = parse_sensor(argv[2], device_name, sensor_name);
+        if (result == 1) {
+            // Specific sensor
+            configure_device(device_name, io_mode, data_mode);
+        } else if (result == 0) {
+            // Entire device (all sensors)
+            configure_device_sensors(atoi(argv[2]), io_mode, data_mode);
+        } else {
+            fprintf(stderr, "Invalid input. Specify <device>, <sensor>, <range>, or 'all'.\n");
+            return 1;
+        }
+    } else if (strcmp(command, "read") == 0) {
+        if (argc != 3) {
+            fprintf(stderr, "Usage: %s read <device|sensor|range|all>\n", argv[0]);
+            return 1;
+        }
 
-	if (ret < 0) {
-		debug("failed to register region, ret = %d\n", ret);
-		goto out;
-	}
-	/* ? */
-	/* cdev_add? */
-	
-	/*Added by us - Start*/
-	ret = cdev_add(&lunix_chrdev_cdev, dev_no, lunix_minor_cnt);
-	/*Added by us - End*/
-	
-	if (ret < 0) {
-		debug("failed to add character device\n");
-		goto out_with_chrdev_region;
-	}
-	debug("completed successfully\n");
-	return 0;
+        char device_name[64], sensor_name[64];
+        int result = parse_sensor(argv[2], device_name, sensor_name);
+        if (result == 1) {
+            // Specific sensor
+            read_device(device_name);
+        } else if (result == 0) {
+            // Entire device (all sensors)
+            read_device_sensors(atoi(argv[2]));
+        } else {
+            fprintf(stderr, "Invalid input. Specify <device>, <sensor>, <range>, or 'all'.\n");
+            return 1;
+        }
+    } else {
+        fprintf(stderr, "Unknown command '%s'. Use 'configure' or 'read'.\n", command);
+        return 1;
+    }
 
-out_with_chrdev_region:
-	unregister_chrdev_region(dev_no, lunix_minor_cnt);
-out:
-	return ret;
-}
-
-void lunix_chrdev_destroy(void)
-{
-	dev_t dev_no;
-	unsigned int lunix_minor_cnt = lunix_sensor_cnt << 3;
-
-	debug("entering\n");
-	dev_no = MKDEV(LUNIX_CHRDEV_MAJOR, 0);
-	cdev_del(&lunix_chrdev_cdev);
-	unregister_chrdev_region(dev_no, lunix_minor_cnt);
-	debug("leaving\n");
+    return 0;
 }
