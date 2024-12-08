@@ -168,7 +168,7 @@ void handle_read_mode(char *argv[]) {
     continuous_read(argv[2], interval);
 }
 
-void print_usage() {
+void print_usage(char *argv[]) {
     fprintf(stderr, "Usage:\n");
     fprintf(stderr, "  Configure: %s configure <device|sensor> <io_mode> <data_mode>\n", argv[0]);
     fprintf(stderr, "    device format: <device_number> or <device_number>-<sensor_name> (e.g., 0, 0-temp)\n");
@@ -180,10 +180,9 @@ void print_usage() {
 }
 
 
-// Minimal main function
 int main(int argc, char *argv[]) {
     if (argc < 2) {
-        print_usage();
+        print_usage(argv);
         return 1;
     }
 
@@ -200,7 +199,7 @@ int main(int argc, char *argv[]) {
         }
         handle_read_mode(argv);
     } else {
-        print_usage();
+        print_usage(argv);
         return 1;
     }
 
