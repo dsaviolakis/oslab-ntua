@@ -24,14 +24,17 @@ int parse_data_mode(const char *mode) {
     return -1;
 }
 
-// Function to determine if the input specifies a single sensor
-int parse_sensor(const char *input, char *device_name, char *sensor_name) {
+// Function to determine if the input specifies a single sensor or range of devices
+int parse_sensor_range(const char *input, char *device_name, char *sensor_name, int *start_device, int *end_device) {
     int device_number;
     if (sscanf(input, "%d-%s", &device_number, sensor_name) == 2) {
         snprintf(device_name, 64, "/dev/lunix%d-%s", device_number, sensor_name);
         return 1; // Specific sensor
     } else if (sscanf(input, "%d", &device_number) == 1) {
-        return 0; // Entire device (all sensors)
+        snprintf(device_name, 64, "/dev/lunix%d", device_number);
+        return 0; // Single device
+    } else if (sscanf(input, "%d-%d", start_device, end_device) == 2) {
+        return 2; // Range of devices
     }
     return -1; // Invalid input
 }
@@ -83,7 +86,7 @@ void handle_configure_mode(char *argv[]) {
     }
 
     char device_name[64], sensor_name[64];
-    int result = parse_sensor(argv[2], device_name, sensor_name);
+    int result = parse_sensor_range(argv[2], device_name, sensor_name, NULL, NULL);
     if (result == 1) {
         // Specific sensor
         configure_device(device_name, io_mode, data_mode);
@@ -130,23 +133,30 @@ void read_device_sensors(int device_number) {
     read_device(device_light);
 }
 
-// Function to handle continuous reading
+// Function to handle continuous reading with interval
 void continuous_read(const char *input) {
     char device_name[64], sensor_name[64];
-    int result = parse_sensor(input, device_name, sensor_name);
+    int start_device, end_device;
+    int result = parse_sensor_range(input, device_name, sensor_name, &start_device, &end_device);
 
     if (result == 1) {
-        // Specific sensor
+        // Specific sensor, read continuously with interval
         while (1) {
             read_device(device_name);
             sleep(1);
         }
     } else if (result == 0) {
-        // Entire device (all sensors)
+        // Entire device (all sensors), read continuously with interval
         int device_number = atoi(input);
         while (1) {
             read_device_sensors(device_number);
             sleep(1);
+        }
+    } else if (result == 2) {
+        // Range of devices, read all sensors for each device once
+        for (int i = start_device; i <= end_device; i++) {
+            read_device_sensors(i);
+            sleep(1); // Apply interval between devices
         }
     } else {
         fprintf(stderr, "Invalid input. Specify <device>, <sensor>, <range>, or 'all'.\n");
@@ -167,7 +177,6 @@ void print_usage(char *argv[]) {
     fprintf(stderr, "    data_mode: cooked or raw\n");
     fprintf(stderr, "  Read:      %s read <device|sensor|range|all> [interval]\n", argv[0]);
     fprintf(stderr, "    device format: <device_number> or <device_number>-<sensor_name> (e.g., 0, 0-temp, 0-11)\n");
-    fprintf(stderr, "    interval: optional, positive integer specifying seconds between reads (default is 1 second)\n\n");
 }
 
 // Minimal main function
@@ -185,7 +194,7 @@ int main(int argc, char *argv[]) {
         handle_configure_mode(argv);
     } else if (strcmp(argv[1], "read") == 0) {
         if (argc < 3 || argc > 4) {
-            fprintf(stderr, "Usage: %s read <device|sensor|range|all> [interval]\n", argv[0]);
+            fprintf(stderr, "Usage: %s read <device|sensor|range|all>\n", argv[0]);
             return 1;
         }
         handle_read_mode(argv);
