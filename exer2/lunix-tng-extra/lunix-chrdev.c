@@ -114,7 +114,7 @@ void read_device(const char *device) {
     }
 
     buffer[bytes_read] = '\0';
-    printf("Data from %s: %s\n", device, buffer);
+    printf("Data from %s: %s", device, buffer);
     close(fd);
 }
 
