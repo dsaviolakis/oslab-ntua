@@ -169,9 +169,14 @@ void handle_read_mode(char *argv[]) {
 }
 
 void print_usage() {
-        fprintf(stderr, "Usage:\n");
-        fprintf(stderr, "  Configure: %s configure <device|sensor|range|all> <io_mode> <data_mode>\n", argv[0]);
-        fprintf(stderr, "  Read:      %s read <device|sensor|range|all> [interval]\n\n", argv[0]);
+    fprintf(stderr, "Usage:\n");
+    fprintf(stderr, "  Configure: %s configure <device|sensor|range|all> <io_mode> <data_mode>\n", argv[0]);
+    fprintf(stderr, "    device format: <device_number> or <device_number>-<sensor_name> (e.g., 0, 0-temp, 0-11)\n");
+    fprintf(stderr, "    io_mode: blocking or non-blocking\n");
+    fprintf(stderr, "    data_mode: cooked or raw\n");
+    fprintf(stderr, "  Read:      %s read <device|sensor|range|all> [interval]\n", argv[0]);
+    fprintf(stderr, "    device format: <device_number> or <device_number>-<sensor_name> (e.g., 0, 0-temp, 0-11)\n");
+    fprintf(stderr, "    interval: optional, positive integer specifying seconds between reads (default is 1 second)\n\n");
 }
 
 // Minimal main function
