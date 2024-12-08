@@ -131,7 +131,7 @@ void read_device_sensors(int device_number) {
 }
 
 // Function to handle continuous reading
-void continuous_read(const char *input, int interval) {
+void continuous_read(const char *input) {
     char device_name[64], sensor_name[64];
     int result = parse_sensor(input, device_name, sensor_name);
 
@@ -139,14 +139,14 @@ void continuous_read(const char *input, int interval) {
         // Specific sensor
         while (1) {
             read_device(device_name);
-            sleep(interval);
+            sleep(1);
         }
     } else if (result == 0) {
         // Entire device (all sensors)
         int device_number = atoi(input);
         while (1) {
             read_device_sensors(device_number);
-            sleep(interval);
+            sleep(1);
         }
     } else {
         fprintf(stderr, "Invalid input. Specify <device>, <sensor>, <range>, or 'all'.\n");
@@ -156,16 +156,7 @@ void continuous_read(const char *input, int interval) {
 
 // Function to handle the "read" mode
 void handle_read_mode(char *argv[]) {
-    int interval = 1; // Default interval is 1 second
-    if (argv[3]) {
-        interval = atoi(argv[3]);
-        if (interval <= 0) {
-            fprintf(stderr, "Interval must be a positive integer.\n");
-            exit(1);
-        }
-    }
-
-    continuous_read(argv[2], interval);
+    continuous_read(argv[2]);
 }
 
 void print_usage(char *argv[]) {
