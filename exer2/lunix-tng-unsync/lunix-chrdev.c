@@ -80,7 +80,6 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	/*Added by us - Start*/
 	WARN_ON (!(sensor = state->sensor));
 	uint32_t raw_data;
-	spin_lock(&sensor->lock);	
 	/*Added by us - End*/
 
 	/*
@@ -90,7 +89,6 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	
 	/*Added by us - Start*/
 	if (!lunix_chrdev_state_needs_refresh(state)) {
-		spin_unlock(&sensor->lock);
 		debug("returned no refresh\n");
 		return -EAGAIN;
 	}
@@ -106,7 +104,6 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	/* ? */
 	
 	/*Added by us - Start*/
-	spin_unlock(&sensor->lock);
 	long cooked_data;
 	switch(state->type) {
 		case BATT: 
@@ -168,7 +165,6 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	state->sensor = &lunix_sensors[sensor_id];
 	state->buf_lim = 0;
 	state->buf_timestamp = 0;
-	sema_init(&state->lock, 1);
 	filp->private_data = state;
 	ret = 0;
 	/*Added by us - End*/
@@ -236,7 +232,6 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 			/* See LDD3, page 153 for a hint */
 
 			/*Added by us - Start*/
-			up(&state->lock);	
 			if(wait_event_interruptible(sensor->wq, lunix_chrdev_state_needs_refresh(state))) {
 				debug("returned -ERESTARTSYS 2\n");
 				return -ERESTARTSYS;
@@ -263,7 +258,6 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	
 	/*Added by us - Start*/
 	if(copy_to_user(usrbuf, (state->buf_data + *f_pos), cnt)) {
-		up(&state->lock);	
 		debug("returned -ERESTARTSYS 4\n");
 		return -EFAULT;
 	}
@@ -290,7 +284,6 @@ out:
 	/* Unlock? */
 
 	/*Added by us - Start*/	
-	up(&state->lock);
 	debug("leaving\n");	
 	/*Added by us - End*/
 
