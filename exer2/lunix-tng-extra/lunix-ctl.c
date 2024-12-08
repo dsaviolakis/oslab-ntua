@@ -13,12 +13,14 @@
 void configure_device(const char *device, int io_mode, int data_mode) {
 	int fd = open(device, O_RDWR);
 	if (fd < 0) {
+		fprintf(stderr, "%s: ", device);
 		perror("Failed to open device");
 		return;
 	}
 
 	// Set IO mode
 	if (ioctl(fd, IOCTL_SET_IO_MODE, &io_mode) < 0) {
+		fprintf(stderr, "%s: ", device);
 		perror("Failed to set IO mode");
 		close(fd);
 		return;
@@ -27,6 +29,7 @@ void configure_device(const char *device, int io_mode, int data_mode) {
 
 	// Set data mode
 	if (ioctl(fd, IOCTL_SET_DATA_MODE, &data_mode) < 0) {
+		fprintf(stderr, "%s: ", device);
 		perror("Failed to set data mode");
 		close(fd);
 		return;
@@ -59,12 +62,14 @@ void read_device(const char *device) {
 	char buffer[BUFFER_SIZE];
 	int fd = open(device, O_RDONLY);
 	if (fd < 0) {
+		fprintf(stderr, "%s: ", device);
 		perror("Failed to open device");
 		return;
 	}
 
 	ssize_t bytes_read = read(fd, buffer, sizeof(buffer) - 1);
 	if (bytes_read < 0) {
+		fprintf(stderr, "%s: ", device);
 		perror("Failed to read from device");
 		close(fd);
 		return;
@@ -98,8 +103,8 @@ void read_range(int start, int end) {
 int main(int argc, char *argv[]) {
 	if (argc == 1) {
 		fprintf(stderr, "Must provide arguments. Example usage:\n");
-		fprintf(stderr, "Configure driver: %s configure <device_range|all> <io_mode> <data_mode>\n", argv[0]);
-		fprintf(stderr, "Read data: %s read <device_range|all>\n", argv[0]);
+		fprintf(stderr, "\tConfigure driver: %s configure <device_range|all> <io_mode> <data_mode>\n", argv[0]);
+		fprintf(stderr, "\tRead data: %s read <device_range|all>\n", argv[0]);
 		return 1;
 	}
 
@@ -109,14 +114,23 @@ int main(int argc, char *argv[]) {
 			return 1;
 		}
 
-		int io_mode = atoi(argv[3]);   // 0 for blocking, 1 for non-blocking
-		int data_mode = atoi(argv[4]); // 0 for cooked, 1 for raw
-
-		if (io_mode < 0 || io_mode > 1 || data_mode < 0 || data_mode > 1) {
-			fprintf(stderr, "Invalid arguments: io_mode and data_mode must be 0 or 1\n");
-			return 1;
+		int io_mode, data_mode;
+		if (strcmp(argv[3], "blocking") == 0) {
+			io_mode = 0;
+		} else if (strcmp(argv[3], "non-blocking") == 0) {
+			io_mode = 1;
+		} else {
+			fprintf(stderr, "Available io_modes: blocking, non-blocking\n");
 		}
-	
+		
+		if (strcmp(argv[4], "cooked") == 0) {
+			data_mode = 0;
+		} else if (strcmp(argv[4], "raw") == 0) {
+			data_mode = 1;
+		} else {
+			fprintf(stderr, "Available data_modes: cooked, raw\n");
+		}
+
 		if (strcmp(argv[2], "all") == 0) {
 			// Configure all devices (lunix1-16)
 			configure_range(1, 16, io_mode, data_mode);
@@ -139,7 +153,7 @@ int main(int argc, char *argv[]) {
 			    return 1;
 			}
 		}
-	} else if (strcmp(argv[1], "read")) {
+	} else if (strcmp(argv[1], "read") == 0) {
 		if (argc < 3) {
 			fprintf(stderr, "Usage: %s read <device_range|all>\n", argv[0]);
 			return 1;
