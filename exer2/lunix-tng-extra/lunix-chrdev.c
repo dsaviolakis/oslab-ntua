@@ -128,6 +128,7 @@ void read_device_sensors(int device_number) {
     read_device(device_temp);
     read_device(device_batt);
     read_device(device_light);
+    printf("\n");
 }
 
 // Function to handle continuous reading
