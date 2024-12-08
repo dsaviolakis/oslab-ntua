@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <string.h>
+#include <time.h>
 
 #define IOCTL_SET_IO_MODE      _IOW('l', 1, int)  // Set blocking/non-blocking mode
 #define IOCTL_SET_DATA_MODE    _IOW('l', 2, int)  // Set cooked/raw mode
@@ -35,7 +36,7 @@ int parse_sensor(const char *input, char *device_name, char *sensor_name) {
     return -1; // Invalid input
 }
 
-// Function to configure a device or specific sensor
+// Function to configure a specific device or sensor
 void configure_device(const char *device, int io_mode, int data_mode) {
     int fd = open(device, O_RDWR);
     if (fd < 0) {
@@ -44,18 +45,18 @@ void configure_device(const char *device, int io_mode, int data_mode) {
     }
 
     if (ioctl(fd, IOCTL_SET_IO_MODE, &io_mode) < 0) {
-        perror("IO mode failed");
+        perror("Failed to set IO mode");
         close(fd);
         return;
     }
 
     if (ioctl(fd, IOCTL_SET_DATA_MODE, &data_mode) < 0) {
-        perror("Data mode failed");
+        perror("Failed to set data mode");
         close(fd);
         return;
     }
 
-    printf("Configured %s: IO mode=%d, Data mode=%d\n", device, io_mode, data_mode);
+    printf("Configured %s with IO mode %d and Data mode %d\n", device, io_mode, data_mode);
     close(fd);
 }
 
@@ -69,6 +70,31 @@ void configure_device_sensors(int device_number, int io_mode, int data_mode) {
     configure_device(device_temp, io_mode, data_mode);
     configure_device(device_batt, io_mode, data_mode);
     configure_device(device_light, io_mode, data_mode);
+}
+
+// Function to handle the "configure" mode
+void handle_configure_mode(char *argv[]) {
+    int io_mode = parse_io_mode(argv[3]);
+    int data_mode = parse_data_mode(argv[4]);
+
+    if (io_mode == -1 || data_mode == -1) {
+        fprintf(stderr, "Invalid modes. IO modes: blocking, non-blocking. Data modes: cooked, raw.\n");
+        exit(1);
+    }
+
+    char device_name[64], sensor_name[64];
+    int result = parse_sensor(argv[2], device_name, sensor_name);
+    if (result == 1) {
+        // Specific sensor
+        configure_device(device_name, io_mode, data_mode);
+    } else if (result == 0) {
+        // Entire device (all sensors)
+        int device_number = atoi(argv[2]);
+        configure_device_sensors(device_number, io_mode, data_mode);
+    } else {
+        fprintf(stderr, "Invalid input. Specify <device> or <sensor>.\n");
+        exit(1);
+    }
 }
 
 // Function to read from a device or specific sensor
@@ -104,61 +130,77 @@ void read_device_sensors(int device_number) {
     read_device(device_light);
 }
 
-// Main function
+// Function to handle continuous reading
+void continuous_read(const char *input, int interval) {
+    char device_name[64], sensor_name[64];
+    int result = parse_sensor(input, device_name, sensor_name);
+
+    if (result == 1) {
+        // Specific sensor
+        while (1) {
+            read_device(device_name);
+            sleep(interval);
+        }
+    } else if (result == 0) {
+        // Entire device (all sensors)
+        int device_number = atoi(input);
+        while (1) {
+            read_device_sensors(device_number);
+            sleep(interval);
+        }
+    } else {
+        fprintf(stderr, "Invalid input. Specify <device> or <sensor>.\n");
+        exit(1);
+    }
+}
+
+// Function to handle the "read" mode
+void handle_read_mode(char *argv[]) {
+    int interval = 1; // Default interval is 1 second
+    if (argv[3]) {
+        interval = atoi(argv[3]);
+        if (interval <= 0) {
+            fprintf(stderr, "Interval must be a positive integer.\n");
+            exit(1);
+        }
+    }
+
+    continuous_read(argv[2], interval);
+}
+
+void print_usage() {
+    fprintf(stderr, "Usage:\n");
+    fprintf(stderr, "  Configure: %s configure <device|sensor> <io_mode> <data_mode>\n", argv[0]);
+    fprintf(stderr, "    device format: <device_number> or <device_number>-<sensor_name> (e.g., 0, 0-temp)\n");
+    fprintf(stderr, "    io_mode: blocking or non-blocking\n");
+    fprintf(stderr, "    data_mode: cooked or raw\n");
+    fprintf(stderr, "  Read:      %s read <device|sensor> [interval]\n", argv[0]);
+    fprintf(stderr, "    device format: <device_number> or <device_number>-<sensor_name> (e.g., 0, 0-temp)\n");
+    fprintf(stderr, "    interval: optional, positive integer specifying seconds between reads (default is 1 second)\n\n");
+}
+
+
+// Minimal main function
 int main(int argc, char *argv[]) {
     if (argc < 2) {
-        fprintf(stderr, "Usage:\n");
-        fprintf(stderr, "  Configure: %s configure <device|sensor|range|all> <io_mode> <data_mode>\n", argv[0]);
-        fprintf(stderr, "  Read:      %s read <device|sensor|range|all>\n", argv[0]);
+        print_usage();
         return 1;
     }
 
-    const char *command = argv[1];
-    if (strcmp(command, "configure") == 0) {
+    if (strcmp(argv[1], "configure") == 0) {
         if (argc != 5) {
-            fprintf(stderr, "Usage: %s configure <device|sensor|range|all> <io_mode> <data_mode>\n", argv[0]);
+            fprintf(stderr, "Usage: %s configure <device|sensor> <io_mode> <data_mode>\n", argv[0]);
             return 1;
         }
-
-        int io_mode = parse_io_mode(argv[3]);
-        int data_mode = parse_data_mode(argv[4]);
-        if (io_mode == -1 || data_mode == -1) {
-            fprintf(stderr, "Invalid modes. IO modes: blocking, non-blocking. Data modes: cooked, raw.\n");
+        handle_configure_mode(argv);
+    } else if (strcmp(argv[1], "read") == 0) {
+        if (argc < 3 || argc > 4) {
+            fprintf(stderr, "Usage: %s read <device|sensor> [interval]\n", argv[0]);
             return 1;
         }
-
-        char device_name[64], sensor_name[64];
-        int result = parse_sensor(argv[2], device_name, sensor_name);
-        if (result == 1) {
-            // Specific sensor
-            configure_device(device_name, io_mode, data_mode);
-        } else if (result == 0) {
-            // Entire device (all sensors)
-            configure_device_sensors(atoi(argv[2]), io_mode, data_mode);
-        } else {
-            fprintf(stderr, "Invalid input. Specify <device>, <sensor>, <range>, or 'all'.\n");
-            return 1;
-        }
-    } else if (strcmp(command, "read") == 0) {
-        if (argc != 3) {
-            fprintf(stderr, "Usage: %s read <device|sensor|range|all>\n", argv[0]);
-            return 1;
-        }
-
-        char device_name[64], sensor_name[64];
-        int result = parse_sensor(argv[2], device_name, sensor_name);
-        if (result == 1) {
-            // Specific sensor
-            read_device(device_name);
-        } else if (result == 0) {
-            // Entire device (all sensors)
-            read_device_sensors(atoi(argv[2]));
-        } else {
-            fprintf(stderr, "Invalid input. Specify <device>, <sensor>, <range>, or 'all'.\n");
-            return 1;
-        }
+        handle_read_mode(argv);
     } else {
-        fprintf(stderr, "Unknown command '%s'. Use 'configure' or 'read'.\n", command);
+        print_usage();
         return 1;
     }
 
