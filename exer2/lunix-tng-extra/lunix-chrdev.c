@@ -186,7 +186,7 @@ int main(int argc, char *argv[]) {
         }
         handle_read_mode(argv);
     } else {
-        print_usage();
+        print_usage(argv);
         return 1;
     }
 
