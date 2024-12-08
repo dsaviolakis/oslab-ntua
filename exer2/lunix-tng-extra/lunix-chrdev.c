@@ -163,8 +163,8 @@ void print_usage(char *argv_0) {
     fprintf(stderr, "    device format: <device_number> or <device_number>-<sensor_name> (e.g., 0, 0-temp, 0-11)\n");
     fprintf(stderr, "    io_mode: blocking or non-blocking\n");
     fprintf(stderr, "    data_mode: cooked or raw\n");
-    fprintf(stderr, "  Read:      %s read <device|sensor|range|all>\n");
-    fprintf(stderr, "    device format: <device_number> or <device_number>-<sensor_name> (e.g., 0, 0-temp, 0-11)\n", argv_0);
+    fprintf(stderr, "  Read:      %s read <device|sensor|range|all>\n", argv_0);
+    fprintf(stderr, "    device format: <device_number> or <device_number>-<sensor_name> (e.g., 0, 0-temp, 0-11)\n");
 }
 
 int main(int argc, char *argv[]) {
