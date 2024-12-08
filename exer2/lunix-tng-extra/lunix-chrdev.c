@@ -168,12 +168,16 @@ void handle_read_mode(char *argv[]) {
     continuous_read(argv[2], interval);
 }
 
+void print_usage() {
+        fprintf(stderr, "Usage:\n");
+        fprintf(stderr, "  Configure: %s configure <device|sensor|range|all> <io_mode> <data_mode>\n", argv[0]);
+        fprintf(stderr, "  Read:      %s read <device|sensor|range|all> [interval]\n\n", argv[0]);
+}
+
 // Minimal main function
 int main(int argc, char *argv[]) {
     if (argc < 2) {
-        fprintf(stderr, "Usage:\n");
-        fprintf(stderr, "  Configure: %s configure <device|sensor|range|all> <io_mode> <data_mode>\n", argv[0]);
-        fprintf(stderr, "  Read:      %s read <device|sensor|range|all> [interval]\n", argv[0]);
+        print_usage();
         return 1;
     }
 
@@ -190,7 +194,7 @@ int main(int argc, char *argv[]) {
         }
         handle_read_mode(argv);
     } else {
-        fprintf(stderr, "Unknown command '%s'. Use 'configure' or 'read'.\n", argv[1]);
+        print_usage();
         return 1;
     }
 
