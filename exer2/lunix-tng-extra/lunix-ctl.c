@@ -132,8 +132,8 @@ int main(int argc, char *argv[]) {
 		}
 
 		if (strcmp(argv[2], "all") == 0) {
-			// Configure all devices (lunix1-16)
-			configure_range(1, 16, io_mode, data_mode);
+			// Configure all devices (lunix0-15)
+			configure_range(0, 15, io_mode, data_mode);
 		} else {
 			// Handle range of devices (e.g., 1-5)
 			char *range = argv[2];
@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
 
 			if (sscanf(range, "%d-%d", &start, &end) == 2) {
 				// Configure the range of devices
-				if (start > 0 && end <= 16 && start <= end) {
+				if (start >= 0 && end < 16 && start <= end) {
 					configure_range(start, end, io_mode, data_mode);
 				} else {
 					fprintf(stderr, "Invalid range specified\n");
@@ -161,7 +161,7 @@ int main(int argc, char *argv[]) {
 
 		if (strcmp(argv[2], "all") == 0) {
 			// Read from all devices (lunix1-16)
-			read_range(1, 16);
+			read_range(0, 15);
 		} else {
 			// Handle range of devices (e.g., 1-5)
 			char *range = argv[2];
@@ -169,7 +169,7 @@ int main(int argc, char *argv[]) {
 
 			if (sscanf(range, "%d-%d", &start, &end) == 2) {
 				// Read from the range of devices
-				if (start > 0 && end <= 16 && start <= end) {
+				if (start >= 0 && end <= 15 && start <= end) {
 					read_range(start, end);
 				} else {
 		    			fprintf(stderr, "Invalid range specified\n");
