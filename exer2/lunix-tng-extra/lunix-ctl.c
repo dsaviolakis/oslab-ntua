@@ -96,7 +96,7 @@ void read_range(int start, int end) {
 }
 
 int main(int argc, char *argv[]) {
-	if (argc < 1) {
+	if (argc == 1) {
 		fprintf(stderr, "Must provide arguments. Example usage:\n");
 		fprintf(stderr, "Configure driver: %s configure <device_range|all> <io_mode> <data_mode>\n", argv[0]);
 		fprintf(stderr, "Read data: %s read <device_range|all>\n", argv[0]);
