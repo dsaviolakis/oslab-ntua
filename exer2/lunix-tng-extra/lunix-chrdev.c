@@ -184,9 +184,9 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "Usage: %s read <device|sensor|range|all>\n", argv[0]);
             return 1;
         }
-        handle_read_mode(argv[0]);
+        handle_read_mode(argv);
     } else {
-        print_usage(argv);
+        print_usage(argv[0]);
         return 1;
     }
 
