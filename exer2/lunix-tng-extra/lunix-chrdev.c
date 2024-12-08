@@ -157,7 +157,7 @@ void handle_read_mode(char *argv[]) {
     continuous_read(argv[2]);  // Interval is 1 second
 }
 
-void print_usage(char argv_0) {
+void print_usage(char *argv_0) {
     fprintf(stderr, "Usage:\n");
     fprintf(stderr, "  Configure: %s configure <device|sensor|range|all> <io_mode> <data_mode>\n", argv_0);
     fprintf(stderr, "    device format: <device_number> or <device_number>-<sensor_name> (e.g., 0, 0-temp, 0-11)\n");
