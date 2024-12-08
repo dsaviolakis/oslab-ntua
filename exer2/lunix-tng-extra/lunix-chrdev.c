@@ -51,10 +51,7 @@ static int lunix_chrdev_state_needs_refresh(struct lunix_chrdev_state_struct *st
 	/* ? */
 	
 	/*Added by us - Start*/
-	if (state->buf_timestamp == sensor->msr_data[state->type]->last_update)
-		return 0;
-	else
-		return 1;
+	return state->buf_timestamp != sensor->msr_data[state->type]->last_update; /*Return 0 if no refresh needed*/
 	/*Added by us - End*/
 
 	/* The following return is bogus, just for the stub to compile */
@@ -81,7 +78,7 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 
 	/*Added by us - Start*/
 	WARN_ON (!(sensor = state->sensor));
-	uint16_t raw_data;
+	uint32_t raw_data;
 	spin_lock(&sensor->lock);	
 	/*Added by us - End*/
 
@@ -108,9 +105,6 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	
 	/*Added by us - Start*/
 	spin_unlock(&sensor->lock);	
-	if(down_interruptible(&state->lock)) {
-		return -ERESTARTSYS;
-	}
 	long cooked_data;
 	if(!state->data_mode) {
 		switch(state->type) {
@@ -120,7 +114,6 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 			default: debug("unknown type\n"); break;
 		}
 		state->buf_lim = snprintf(state->buf_data, LUNIX_CHRDEV_BUFSZ, "%ld.%03ld\n", cooked_data/1000, cooked_data%1000);
-	up(&state->lock);
 	} else {
 		state->buf_lim = snprintf(state->buf_data, LUNIX_CHRDEV_BUFSZ, "%d", raw_data); 
 	}
