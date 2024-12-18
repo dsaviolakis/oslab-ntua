@@ -231,6 +231,7 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	 * on a "fresh" measurement, do so
 	 */
 	if (*f_pos == 0) { /*Check for new data ONLY if have not already start reading*/
+			   /*If FIRST TIME that reads file OR have FULLY read previous version*/
 		while (lunix_chrdev_state_update(state) == -EAGAIN) {
 			/* ? */
 			/* The process needs to sleep */
@@ -264,6 +265,10 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	
 	/*Added by us - Start*/
 	if(copy_to_user(usrbuf, (state->buf_data + *f_pos), cnt)) {/*Safely transfer data to user space*/
+								   /*Start transfering cnt bytes of data*/
+								   /*starting from (state->buf_data + *f_pos)*/
+								   /*state->buf is the starting address of the data*/
+								   /*f_pos is the offset*/
 		up(&state->lock); /*Semaphore flag up*/	
 		debug("returned -ERESTARTSYS 4\n");
 		return -EFAULT;
