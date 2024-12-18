@@ -52,7 +52,8 @@ static int lunix_chrdev_state_needs_refresh(struct lunix_chrdev_state_struct *st
 	/*Added by us - Start*/
 	debug("State Timestamp: %d\n", state->buf_timestamp);
 	debug("Last Update: %d\n", sensor->msr_data[state->type]->last_update);
-	return state->buf_timestamp != sensor->msr_data[state->type]->last_update; /*Return 0 if no refresh needed*/
+	return state->buf_timestamp != sensor->msr_data[state->type]->last_update; /*Return 0 if no refresh needed,*/
+										   /*else return 1*/
 	/*Added by us - End*/
 
 	/* The following return is bogus, just for the stub to compile */
@@ -80,7 +81,6 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	/*Added by us - Start*/
 	WARN_ON (!(sensor = state->sensor));
 	uint32_t raw_data;
-	spin_lock(&sensor->lock);	
 	/*Added by us - End*/
 
 	/*
@@ -89,13 +89,15 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	/* ? */
 	
 	/*Added by us - Start*/
+	spin_lock(&sensor->lock);	/*Used in code that cannot sleep*/	
 	if (!lunix_chrdev_state_needs_refresh(state)) { /*If no refresh needed*/
 		spin_unlock(&sensor->lock);
 		debug("returned no refresh\n");
 		return -EAGAIN;
 	}
-	raw_data = sensor->msr_data[state->type]->values[0]; /*Get new value of sensor*/
+	raw_data = sensor->msr_data[state->type]->values[0]; 			/*Get new value of sensor*/
 	state->buf_timestamp = sensor->msr_data[state->type]->last_update;	/*Get timestamp of new value*/
+	spin_unlock(&sensor->lock);
 	/*Added by us - End*/
 
 	/*
@@ -106,7 +108,6 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	/* ? */
 	
 	/*Added by us - Start*/
-	spin_unlock(&sensor->lock);
 	long cooked_data;
 	switch(state->type) {/*Format values according to lookup table*/
 		case BATT: 
@@ -136,7 +137,7 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	/* ? */
 	
 	/*Added by us - Start*/
-	unsigned int minor_num = iminor(inode);
+	unsigned int minor_num = iminor(inode); 
 	struct lunix_chrdev_state_struct *state;
 	unsigned int sensor_id = minor_num / 8;
 	unsigned int measurement_type = minor_num % 8;
@@ -229,7 +230,7 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	 * updated by actual sensor data (i.e. we need to report
 	 * on a "fresh" measurement, do so
 	 */
-	if (*f_pos == 0) {
+	if (*f_pos == 0) { /*Check for new data ONLY if have not already start reading*/
 		while (lunix_chrdev_state_update(state) == -EAGAIN) {
 			/* ? */
 			/* The process needs to sleep */
