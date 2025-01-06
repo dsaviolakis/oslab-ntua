@@ -1,8 +1,8 @@
 ## 2.3
 ### 2.3.1
-FS_DISK_1=./ext2-vdisks/fsdisk1-7c2b425a6.img 
-FS_DISK_2=./ext2-vdisks/fsdisk2-a0173283d.img 
-FS_DISK_3=./ext2-vdisks/fsdisk3-982902777.img 
+FS_DISK_1=./ext2-vdisks/fsdisk1-7c2b425a6.img  
+FS_DISK_2=./ext2-vdisks/fsdisk2-a0173283d.img  
+FS_DISK_3=./ext2-vdisks/fsdisk3-982902777.img  
 exec $QEMU -enable-kvm -M pc -m $UTOPIA_MEMORY_MB \
     -smp 2 -drive file=$QCOW2_PRIVATE_FILE,if=virtio \
     -net nic -net user,hostfwd=tcp:$UTOPIA_SSH_INTERFACE:$UTOPIA_SSH_PORT-:22 \
