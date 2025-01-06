@@ -26,11 +26,23 @@ cat /proc/mounts #ext2
 ### 2.3.4
 tune2fs -l /dev/vdb #Tue Dec 12 15:23:16 2023
 ### 2.3.5
-tune2fs -l /dev/vdb #Mon Jan  6 22:06:15 2025
+tune2fs -l /dev/vdb #Mon Jan  6 22:06:15 2025  
 ### 2.3.6
-tune2fs -l /dev/vdb #/mnt
+tune2fs -l /dev/vdb #/mnt  
 ### 2.3.7
-
+tune2fs -l /dev/vdb #Mon Jan  6 22:06:15 2025 ? 
+### 2.3.9
+tune2fs -l /dev/vdb #1024
+### 2.3.11
+tune2fs -l /dev/vdb #128
+### 2.3.12
+tune2fs -l /dev/vdb #49552 12810
+### 2.3.16
+dumpe2fs /dev/vdb #8193 16385 24577 32769 40961 49153
+### 2.3.19
+dumpe2fs /dev/vdb #7
+### 2.3.22
+dumpe2fs /dev/vdb #8194 16386 24578 32770 40962 49154
 ## 2.4
 
 ## 2.5
