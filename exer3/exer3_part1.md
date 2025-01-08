@@ -60,5 +60,19 @@ dumpe2fs /dev/vdb #Inode table at 40965-41193 (+4) ?
 ### 2.3.33
 ?
 ## 2.4
-
+### 2.4.3
+#touch: cannot touch 'file': No space left on device
+### 2.4.4
+#openat(AT_FDCWD, "file", O_WRONLY|O_CREAT|O_NOCTTY|O_NONBLOCK, 0666) = -1 ENOSPC (No space left on device)
+### 2.4.5
+find . -type f | wc -l #4868
+find . -type d | wc -l #259
+### 2.4.6
+du -sh #270K
+di -i #5136 inodes
+### 2.4.7
+#20M
+### 2.4.8
+tune2fs -l /dev/vdc #Free blocks: 19555
 ## 2.5
+
