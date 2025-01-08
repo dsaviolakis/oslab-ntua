@@ -75,4 +75,27 @@ di -i #5136 inodes
 ### 2.4.8
 tune2fs -l /dev/vdc #Free blocks: 19555
 ## 2.5
+sha256sum 982902777d0e66e14379f642365b4fa71a5473348d9af2453e80dbea135bb50d
+### 2.5.1
+e2fsck /dev/vdd
+### 2.5.3
+e2fsck 1.47.0 (5-Feb-2023)
+fsdisk3.img contains a file system with errors, check forced.
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+First entry 'BOO' (inode=1717) in directory inode 1717 (/dir-2) should be '.'
+Fix<y>? yes
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Inode 3425 ref count is 1, should be 2.  Fix<y>? yes
+Pass 5: Checking group summary information
+Block bitmap differences:  +34
+Fix<y>? yes
+Free blocks count wrong (926431538, counted=19800).
+Fix<y>? yes
+fsdisk3.img: ***** FILE SYSTEM WAS MODIFIED *****
+fsdisk3.img: 23/5136 files (0.0% non-contiguous), 680/20480 blocks
+### 2.5.4
+dd if=/home/user/shared/fsdisk3-982902777-backup.img of=/dev/vdd bs=4M status=progress
+?
 
