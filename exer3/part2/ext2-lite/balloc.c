@@ -321,7 +321,24 @@ static int ext2_allocate_in_bg(struct super_block *sb, int group,
 	unsigned long num;
 
 	/* ? */
-	return -1;
+	first_free_bit = find_next_zero_bit_le(bitmap_bh->b_data, (unsigned long) nblocks, 0);
+	if (first_free_bit > nblocks)
+		return -1;
+	
+	num = 1;
+	ext2_set_bit_atomic(&sb->s_blockgroup_lock, first_free_bit, bitmap_bh->b_data);
+
+	while (find_next_zero_bit_le(bitmap_bh->b_data, (unsigned long) nblocks, 0) == first_free_bit + num) {
+		if (first_free_bit + num > nblocks || num >= *count) {
+			break;
+		}
+		ext2_set_bit_atomic(&sb->s_blockgroup_lock, first_free_bit + num, bitmap_bh->b_data);
+		num++;
+
+	}
+	
+	*count = num;
+	return first_free_bit;
 }
 
 /*

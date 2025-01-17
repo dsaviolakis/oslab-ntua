@@ -249,12 +249,23 @@ static struct ext2_inode *ext2_get_inode(struct super_block *sb, ino_t ino,
 	/* Figure out in which block is the inode we are looking for and get
 	 * its group block descriptor. */
 	/* ? */
+	block_group = (ino - 1) / inodes_pg; /*Block group counting starts from 0*/
+	gdp = ext2_get_group_desc(sb, block_group, NULL);
 
 	/* Figure out the offset within the block group inode table */
 	/* ? */
-
+	offset = ((ino - 1) % inodes_pg) * inode_sz /*offset in bytes*/
+	
 	/* Return the pointer to the appropriate ext2_inode */
 	/* ? */
+	unsigned long block_offset = offset / blocksize;
+	block = le32_to_cpu(gdp->bg_inode_table) + block_offset;
+	if(!(bh = sb_bread(sb, block)))
+		goto eio;	
+	
+	*p = bh;
+	offset &= (blocksize - 1);
+	return (struct ext2_inode *) (bh->b_data + offset);
 
 einval:
 	ext2_error(sb, __func__, "bad inode number: %lu", (unsigned long)ino);
@@ -326,8 +337,18 @@ struct inode *ext2_iget(struct super_block *sb, unsigned long ino)
 	//> Setup the {inode,file}_operations structures depending on the type.
 	if (S_ISREG(inode->i_mode)) {
 		/* ? */
+		inode->i_op = &ext2_file_node_operations;
+		inode->i_fop = &ext2_file_operations;
+		if (IS_DAX(inode))
+			inode->i_mapping->a_ops = &ext2_dax_aops;
+		else		
+			inode->i_mapping->a_ops = &ext2_aops;
+
 	} else if (S_ISDIR(inode->i_mode)) {
 		/* ? */
+		inode->i_op = &ext2_dir_node_operations;
+		inode->i_fop = &ext2_dir_operations;
+		inode->i_mapping->a_ops = &ext2_aops;
 	} else if (S_ISLNK(inode->i_mode)) {
 		if (ext2_inode_is_fast_symlink(inode)) {
 			inode->i_op = &simple_symlink_inode_operations;

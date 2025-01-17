@@ -264,8 +264,34 @@ ext2_dirent *ext2_find_entry(struct inode *dir, const struct qstr *child,
 	/* Scan all the pages of the directory to find the requested name. */
 	for (i=0; i < npages; i++) {
 		/* ? */
+		kaddr = ext2_get_folio(dir, i, 0, foliop); /*Address of i-th page of the directory*/
+		if (IS_ERR(kaddr))
+			return ERR_CAST(kaddr);
+		
+		de = (ext2_diraddress *) kaddr; /*Start of directory entry*/
+		kaddr += ext2_last_byte(dir, i) - reclen; /*Start of name field in directory entry*/
+		while ((char *) de <= kaddr) {
+			if (de->rec_len == 0) {
+				ext2_error(dir->i_sb, __func__, "zero-length directory entry");
+				folio_release_kmap(*foliop, de);
+				goto out;
+			}
+			if (ext2_match(namelen, name, de))
+				goto found;
+			de = ext2_next_entry(de);
+		}
+		folio_release_kmap(*foliop, kaddr);
+
+
+		/*Perhaps more needed*/
 	}
+
+out:
 	return ERR_PTR(-ENOENT);
+
+found:
+	/*Perhaps more needed*/
+	return de;
 }
 
 ext2_dirent *ext2_dotdot(struct inode *dir, struct folio **foliop)

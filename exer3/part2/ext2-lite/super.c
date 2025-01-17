@@ -763,11 +763,15 @@ static int __init init_ext2_fs(void)
 	int err = init_inodecache();
 	if (err)
 		return err;
-
+	err = register_filesystem(&ext2_fs_type);
+	if(err)
+		goto out;
+	return 0;
 	/* Register ext2-lite filesystem in the kernel */
 	/* If an error occurs remember to call destroy_inodecache() */
 	/* ? */
-
+out:
+	destroy_inodecache();
 	return err;
 }
 
@@ -775,7 +779,7 @@ static void __exit exit_ext2_fs(void)
 {
 	/* Unregister ext2-lite filesystem from the kernel */
 	/* ? */
-
+	unregister_filesystem(&ext2_fs_type);
 	destroy_inodecache();
 }
 
