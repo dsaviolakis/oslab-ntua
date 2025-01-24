@@ -254,7 +254,7 @@ static struct ext2_inode *ext2_get_inode(struct super_block *sb, ino_t ino,
 
 	/* Figure out the offset within the block group inode table */
 	/* ? */
-	offset = ((ino - 1) % inodes_pg) * inode_sz /*offset in bytes*/
+	offset = ((ino - 1) % inodes_pg) * inode_sz; /*offset in bytes*/
 	
 	/* Return the pointer to the appropriate ext2_inode */
 	/* ? */
@@ -325,7 +325,7 @@ struct inode *ext2_iget(struct super_block *sb, unsigned long ino)
 	inode_set_atime(inode, (signed)le32_to_cpu(raw_inode->i_atime), 0);
 	inode_set_ctime(inode, (signed)le32_to_cpu(raw_inode->i_ctime), 0);
 	inode_set_mtime(inode, (signed)le32_to_cpu(raw_inode->i_mtime), 0);
-	ei->i_dtime = le32_to_cpu(raw_inode->i_dtime);
+	//ei->i_dtime = le32_to_cpu(raw_inode->i_dtime);
 	inode->i_blocks = le32_to_cpu(raw_inode->i_blocks);
 	inode->i_size = le32_to_cpu(raw_inode->i_size);
 	if (i_size_read(inode) < 0) {
@@ -337,16 +337,16 @@ struct inode *ext2_iget(struct super_block *sb, unsigned long ino)
 	//> Setup the {inode,file}_operations structures depending on the type.
 	if (S_ISREG(inode->i_mode)) {
 		/* ? */
-		inode->i_op = &ext2_file_node_operations;
+		inode->i_op = &ext2_file_inode_operations;
 		inode->i_fop = &ext2_file_operations;
-		if (IS_DAX(inode))
+		/*if (IS_DAX(inode))
 			inode->i_mapping->a_ops = &ext2_dax_aops;
-		else		
-			inode->i_mapping->a_ops = &ext2_aops;
+		else*/		
+		inode->i_mapping->a_ops = &ext2_aops;
 
 	} else if (S_ISDIR(inode->i_mode)) {
 		/* ? */
-		inode->i_op = &ext2_dir_node_operations;
+		inode->i_op = &ext2_dir_inode_operations;
 		inode->i_fop = &ext2_dir_operations;
 		inode->i_mapping->a_ops = &ext2_aops;
 	} else if (S_ISLNK(inode->i_mode)) {

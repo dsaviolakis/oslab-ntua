@@ -268,7 +268,7 @@ ext2_dirent *ext2_find_entry(struct inode *dir, const struct qstr *child,
 		if (IS_ERR(kaddr))
 			return ERR_CAST(kaddr);
 		
-		de = (ext2_diraddress *) kaddr; /*Start of directory entry*/
+		de = (ext2_dirent *) kaddr; /*Start of directory entry*/
 		kaddr += ext2_last_byte(dir, i) - reclen; /*Start of name field in directory entry*/
 		while ((char *) de <= kaddr) {
 			if (de->rec_len == 0) {
