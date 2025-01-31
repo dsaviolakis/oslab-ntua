@@ -314,31 +314,43 @@ void ext2_free_blocks(struct inode *inode, unsigned long block, unsigned long co
 static int ext2_allocate_in_bg(struct super_block *sb, int group,
                                struct buffer_head *bitmap_bh, unsigned long *count)
 {
-	ext2_fsblk_t group_first_block = ext2_group_first_block_no(sb, group);
-	ext2_fsblk_t group_last_block = ext2_group_last_block_no(sb, group);
-	ext2_grpblk_t nblocks = group_last_block - group_first_block + 1;
-	ext2_grpblk_t first_free_bit;
-	unsigned long num;
+    ext2_fsblk_t group_first_block = ext2_group_first_block_no(sb, group); // First block in the group.
+    ext2_fsblk_t group_last_block = ext2_group_last_block_no(sb, group); // Last block in the group.
+    ext2_grpblk_t nblocks = group_last_block - group_first_block + 1; // Total blocks in the group.
+    ext2_grpblk_t first_free_bit; // First free block in the bitmap.
+    unsigned long num; // Number of allocated blocks.
 
-	/* ? */
-	first_free_bit = find_next_zero_bit_le(bitmap_bh->b_data, (unsigned long) nblocks, 0);
-	if (first_free_bit > nblocks)
-		return -1;
-	
-	num = 1;
-	ext2_set_bit_atomic(&sb->s_blockgroup_lock, first_free_bit, bitmap_bh->b_data);
+    /*
+     * Find the first free block in the block group's bitmap.
+     */
+    first_free_bit = find_next_zero_bit_le(bitmap_bh->b_data, (unsigned long)nblocks, 0);
+    if (first_free_bit > nblocks)
+        return -1; // If no free block is found, return -1.
 
-	while (find_next_zero_bit_le(bitmap_bh->b_data, (unsigned long) nblocks, 0) == first_free_bit + num) {
-		if (first_free_bit + num > nblocks || num >= *count) {
-			break;
-		}
-		ext2_set_bit_atomic(&sb->s_blockgroup_lock, first_free_bit + num, bitmap_bh->b_data);
-		num++;
+    /*
+     * Allocate the first free block and mark it as used in the bitmap.
+     */
+    num = 1; // Start with one allocated block.
+    ext2_set_bit_atomic(&sb->s_blockgroup_lock, first_free_bit, bitmap_bh->b_data);
 
-	}
-	
-	*count = num;
-	return first_free_bit;
+    /*
+     * Try to allocate contiguous blocks starting from the first free block.
+     */
+    while (find_next_zero_bit_le(bitmap_bh->b_data, (unsigned long)nblocks, 0) == first_free_bit + num) {
+        // Check if we have reached the end of the block group or the requested count.
+        if (first_free_bit + num > nblocks || num >= *count) {
+            break;
+        }
+        // Allocate the next contiguous block and mark it as used.
+        ext2_set_bit_atomic(&sb->s_blockgroup_lock, first_free_bit + num, bitmap_bh->b_data);
+        num++; // Increment the number of allocated blocks.
+    }
+
+    /*
+     * Return the number of allocated blocks and the starting block index.
+     */
+    *count = num; // Update the count of allocated blocks.
+    return first_free_bit; // Return the starting block index.
 }
 
 /*
