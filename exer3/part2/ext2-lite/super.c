@@ -757,30 +757,35 @@ static struct file_system_type ext2_fs_type = {
 	.fs_flags = FS_REQUIRES_DEV,
 };
 MODULE_ALIAS_FS("ext2-lite");
-
 static int __init init_ext2_fs(void)
 {
-	int err = init_inodecache();
-	if (err)
-		return err;
-	err = register_filesystem(&ext2_fs_type);
-	if(err)
-		goto out;
-	return 0;
-	/* Register ext2-lite filesystem in the kernel */
-	/* If an error occurs remember to call destroy_inodecache() */
-	/* ? */
+    // Initialize the inode cache for the ext2 filesystem.
+    int err = init_inodecache();
+    if (err)
+        return err; // If initialization fails, return the error code.
+
+    // Register the ext2 filesystem with the kernel.
+    err = register_filesystem(&ext2_fs_type);
+    if (err)
+        goto out; // If registration fails, jump to the error handling section.
+
+    // If everything succeeds, return 0 to indicate successful initialization.
+    return 0;
+
+    // Error handling section:
 out:
-	destroy_inodecache();
-	return err;
+    // Destroy the inode cache if an error occurs during registration.
+    destroy_inodecache();
+    return err; // Return the error code.
 }
 
 static void __exit exit_ext2_fs(void)
 {
-	/* Unregister ext2-lite filesystem from the kernel */
-	/* ? */
-	unregister_filesystem(&ext2_fs_type);
-	destroy_inodecache();
+    // Unregister the ext2 filesystem from the kernel.
+    unregister_filesystem(&ext2_fs_type);
+
+    // Destroy the inode cache to clean up resources.
+    destroy_inodecache();
 }
 
 MODULE_AUTHOR("ADD YOUR NAME HERE"); /* ? */
