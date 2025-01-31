@@ -231,49 +231,53 @@ static void ext2_truncate_blocks(struct inode *inode, loff_t offset)
 static struct ext2_inode *ext2_get_inode(struct super_block *sb, ino_t ino,
                                          struct buffer_head **p)
 {
-	struct buffer_head *bh;
-	unsigned long block_group;
-	unsigned long block;
-	unsigned long offset;
-	struct ext2_group_desc *gdp;
-	unsigned long inodes_pg = EXT2_INODES_PER_GROUP(sb);
-	int inode_sz = EXT2_INODE_SIZE(sb);
-	unsigned long blocksize = sb->s_blocksize;
+    struct buffer_head *bh; // Buffer head to hold the inode block.
+    unsigned long block_group; // Block group containing the inode.
+    unsigned long block; // Block number within the block group.
+    unsigned long offset; // Offset within the block.
+    struct ext2_group_desc *gdp; // Group descriptor for the block group.
+    unsigned long inodes_pg = EXT2_INODES_PER_GROUP(sb); // Number of inodes per group.
+    int inode_sz = EXT2_INODE_SIZE(sb); // Size of each inode in bytes.
+    unsigned long blocksize = sb->s_blocksize; // Block size of the filesystem.
 
-	*p = NULL;
-	/* Check the validity of the given inode number. */
-	if ((ino != EXT2_ROOT_INO && ino < EXT2_FIRST_INO(sb)) ||
-	    ino > le32_to_cpu(EXT2_SB(sb)->s_es->s_inodes_count))
-		goto einval;
+    *p = NULL; // Initialize the output buffer head pointer to NULL.
 
-	/* Figure out in which block is the inode we are looking for and get
-	 * its group block descriptor. */
-	/* ? */
-	block_group = (ino - 1) / inodes_pg; /*Block group counting starts from 0*/
-	gdp = ext2_get_group_desc(sb, block_group, NULL);
+    // Check the validity of the given inode number.
+    if ((ino != EXT2_ROOT_INO && ino < EXT2_FIRST_INO(sb)) ||
+        ino > le32_to_cpu(EXT2_SB(sb)->s_es->s_inodes_count))
+        goto einval; // If the inode number is invalid, jump to the error handling section.
 
-	/* Figure out the offset within the block group inode table */
-	/* ? */
-	offset = ((ino - 1) % inodes_pg) * inode_sz; /*offset in bytes*/
-	
-	/* Return the pointer to the appropriate ext2_inode */
-	/* ? */
-	unsigned long block_offset = offset / blocksize;
-	block = le32_to_cpu(gdp->bg_inode_table) + block_offset;
-	if(!(bh = sb_bread(sb, block)))
-		goto eio;	
-	
-	*p = bh;
-	offset &= (blocksize - 1);
-	return (struct ext2_inode *) (bh->b_data + offset);
+    // Calculate the block group containing the inode.
+    block_group = (ino - 1) / inodes_pg; // Block group counting starts from 0.
+    gdp = ext2_get_group_desc(sb, block_group, NULL); // Get the group descriptor for the block group.
+
+    // Calculate the offset within the block group's inode table.
+    offset = ((ino - 1) % inodes_pg) * inode_sz; // Offset in bytes.
+
+    // Calculate the block number and offset within the block.
+    unsigned long block_offset = offset / blocksize;
+    block = le32_to_cpu(gdp->bg_inode_table) + block_offset; // Block number in the inode table.
+
+    // Read the block containing the inode into memory.
+    if (!(bh = sb_bread(sb, block)))
+        goto eio; // If reading the block fails, jump to the error handling section.
+
+    *p = bh; // Store the buffer head in the output pointer.
+    offset &= (blocksize - 1); // Calculate the offset within the block.
+
+    // Return a pointer to the inode within the block.
+    return (struct ext2_inode *)(bh->b_data + offset);
 
 einval:
-	ext2_error(sb, __func__, "bad inode number: %lu", (unsigned long)ino);
-	return ERR_PTR(-EINVAL);
+    // Handle invalid inode number error.
+    ext2_error(sb, __func__, "bad inode number: %lu", (unsigned long)ino);
+    return ERR_PTR(-EINVAL);
+
 eio:
-	ext2_error(sb, __func__, "unable to read inode block - inode=%lu, block=%lu",
-	           (unsigned long)ino, block);
-	return ERR_PTR(-EIO);
+    // Handle I/O error when reading the inode block.
+    ext2_error(sb, __func__, "unable to read inode block - inode=%lu, block=%lu",
+               (unsigned long)ino, block);
+    return ERR_PTR(-EIO);
 }
 
 void ext2_set_inode_flags(struct inode *inode)
