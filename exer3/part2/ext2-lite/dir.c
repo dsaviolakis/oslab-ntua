@@ -250,48 +250,58 @@ static int ext2_readdir(struct file *file, struct dir_context *ctx)
 ext2_dirent *ext2_find_entry(struct inode *dir, const struct qstr *child,
                              struct folio **foliop)
 {
-	const char *name = child->name;
-	int namelen = child->len;
-	unsigned reclen = EXT2_DIR_REC_LEN(namelen);
-	unsigned long npages = dir_pages(dir);
-	unsigned long i;
-	ext2_dirent *de;
-	char *kaddr;
+    const char *name = child->name; // Name of the directory entry to find.
+    int namelen = child->len;       // Length of the name.
+    unsigned reclen = EXT2_DIR_REC_LEN(namelen); // Length of the directory record for this name.
+    unsigned long npages = dir_pages(dir); // Total number of pages in the directory.
+    unsigned long i;
+    ext2_dirent *de; // Pointer to the directory entry.
+    char *kaddr;     // Kernel address of the mapped page.
 
-	if (npages == 0)
-		return ERR_PTR(-ENOENT);
+    // If the directory has no pages, return an error indicating the entry was not found.
+    if (npages == 0)
+        return ERR_PTR(-ENOENT);
 
-	/* Scan all the pages of the directory to find the requested name. */
-	for (i=0; i < npages; i++) {
-		/* ? */
-		kaddr = ext2_get_folio(dir, i, 0, foliop); /*Address of i-th page of the directory*/
-		if (IS_ERR(kaddr))
-			return ERR_CAST(kaddr);
-		
-		de = (ext2_dirent *) kaddr; /*Start of directory entry*/
-		kaddr += ext2_last_byte(dir, i) - reclen; /*Start of name field in directory entry*/
-		while ((char *) de <= kaddr) {
-			if (de->rec_len == 0) {
-				ext2_error(dir->i_sb, __func__, "zero-length directory entry");
-				folio_release_kmap(*foliop, de);
-				goto out;
-			}
-			if (ext2_match(namelen, name, de))
-				goto found;
-			de = ext2_next_entry(de);
-		}
-		folio_release_kmap(*foliop, kaddr);
+    // Scan all the pages of the directory to find the requested name.
+    for (i = 0; i < npages; i++) {
+        // Map the i-th page of the directory into kernel memory.
+        kaddr = ext2_get_folio(dir, i, 0, foliop);
+        if (IS_ERR(kaddr)) // If mapping fails, return the error.
+            return ERR_CAST(kaddr);
 
+        // Start scanning from the beginning of the directory entries in this page.
+        de = (ext2_dirent *)kaddr;
+        // Calculate the end boundary for scanning in this page.
+        kaddr += ext2_last_byte(dir, i) - reclen;
 
-		/*Perhaps more needed*/
-	}
+        // Iterate through all directory entries in the current page.
+        while ((char *)de <= kaddr) {
+            // Check for a zero-length directory entry (corruption).
+            if (de->rec_len == 0) {
+                ext2_error(dir->i_sb, __func__, "zero-length directory entry");
+                folio_release_kmap(*foliop, de); // Release the mapped page.
+                goto out; // Exit with an error.
+            }
+
+            // Check if the current directory entry matches the requested name.
+            if (ext2_match(namelen, name, de))
+                goto found; // If a match is found, exit the loop.
+
+            // Move to the next directory entry.
+            de = ext2_next_entry(de);
+        }
+
+        // Release the mapped page if the entry was not found in this page.
+        folio_release_kmap(*foliop, kaddr);
+    }
 
 out:
-	return ERR_PTR(-ENOENT);
+    // If the entry was not found after scanning all pages, return an error.
+    return ERR_PTR(-ENOENT);
 
 found:
-	/*Perhaps more needed*/
-	return de;
+    // If the entry was found, return a pointer to the directory entry.
+    return de;
 }
 
 ext2_dirent *ext2_dotdot(struct inode *dir, struct folio **foliop)
