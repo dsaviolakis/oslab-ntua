@@ -287,110 +287,110 @@ void ext2_set_inode_flags(struct inode *inode)
 
 struct inode *ext2_iget(struct super_block *sb, unsigned long ino)
 {
-	struct ext2_inode_info *ei;
-	struct buffer_head *bh = NULL;
-	struct ext2_inode *raw_inode;
-	struct inode *inode;
-	long ret = -EIO;
-	int n;
+    struct ext2_inode_info *ei; // Pointer to the ext2-specific inode information.
+    struct buffer_head *bh = NULL; // Buffer head to hold the inode block.
+    struct ext2_inode *raw_inode; // Pointer to the raw inode data on disk.
+    struct inode *inode; // VFS inode structure.
+    long ret = -EIO; // Default error code.
+    int n;
 
-	ext2_debug("request to get ino: %lu\n", ino);
+    ext2_debug("request to get ino: %lu\n", ino); // Debug message.
 
-	/*
-	 * Allocate the VFS node.
-	 * We know that the returned inode is part of a bigger ext2_inode_info
-	 * inode since iget_locked() calls our ext2_sops->alloc_inode() function
-	 * to perform the allocation of the inode.
-	 */
-	inode = iget_locked(sb, ino);
-	if (!inode)
-		return ERR_PTR(-ENOMEM);
-	if (!(inode->i_state & I_NEW))
-		return inode;
+    /*
+     * Allocate the VFS inode.
+     * iget_locked() allocates the inode and locks it. If the inode is already
+     * in memory, it simply returns the existing inode.
+     */
+    inode = iget_locked(sb, ino);
+    if (!inode)
+        return ERR_PTR(-ENOMEM); // Return error if allocation fails.
+    if (!(inode->i_state & I_NEW))
+        return inode; // If the inode is not new, return it immediately.
 
-	/*
-	 * Read the EXT2 inode *from disk*
-	 */
-	raw_inode = ext2_get_inode(inode->i_sb, ino, &bh);
-	if (IS_ERR(raw_inode)) {
-		ret = PTR_ERR(raw_inode);
-		brelse(bh);
-		iget_failed(inode);
-		return ERR_PTR(ret);
-	}
+    /*
+     * Read the EXT2 inode from disk.
+     */
+    raw_inode = ext2_get_inode(inode->i_sb, ino, &bh);
+    if (IS_ERR(raw_inode)) {
+        ret = PTR_ERR(raw_inode); // Get the error code.
+        brelse(bh); // Release the buffer head.
+        iget_failed(inode); // Clean up the inode allocation.
+        return ERR_PTR(ret); // Return the error.
+    }
 
-	/*
-	 * Fill the necessary fields of the VFS inode structure.
-	 */
-	inode->i_mode = le16_to_cpu(raw_inode->i_mode);
-	i_uid_write(inode, (uid_t)le16_to_cpu(raw_inode->i_uid));
-	i_gid_write(inode, (gid_t)le16_to_cpu(raw_inode->i_gid));
-	set_nlink(inode, le16_to_cpu(raw_inode->i_links_count));
-	inode_set_atime(inode, (signed)le32_to_cpu(raw_inode->i_atime), 0);
-	inode_set_ctime(inode, (signed)le32_to_cpu(raw_inode->i_ctime), 0);
-	inode_set_mtime(inode, (signed)le32_to_cpu(raw_inode->i_mtime), 0);
-	//ei->i_dtime = le32_to_cpu(raw_inode->i_dtime);
-	inode->i_blocks = le32_to_cpu(raw_inode->i_blocks);
-	inode->i_size = le32_to_cpu(raw_inode->i_size);
-	if (i_size_read(inode) < 0) {
-		ret = -EUCLEAN;
-		brelse(bh);
-		iget_failed(inode);
-		return ERR_PTR(ret);
-	}
-	//> Setup the {inode,file}_operations structures depending on the type.
-	if (S_ISREG(inode->i_mode)) {
-		/* ? */
-		inode->i_op = &ext2_file_inode_operations;
-		inode->i_fop = &ext2_file_operations;
-		/*if (IS_DAX(inode))
-			inode->i_mapping->a_ops = &ext2_dax_aops;
-		else*/		
-		inode->i_mapping->a_ops = &ext2_aops;
+    /*
+     * Fill the necessary fields of the VFS inode structure.
+     */
+    inode->i_mode = le16_to_cpu(raw_inode->i_mode); // File mode (permissions and type).
+    i_uid_write(inode, (uid_t)le16_to_cpu(raw_inode->i_uid)); // User ID.
+    i_gid_write(inode, (gid_t)le16_to_cpu(raw_inode->i_gid)); // Group ID.
+    set_nlink(inode, le16_to_cpu(raw_inode->i_links_count)); // Number of hard links.
+    inode_set_atime(inode, (signed)le32_to_cpu(raw_inode->i_atime), 0); // Access time.
+    inode_set_ctime(inode, (signed)le32_to_cpu(raw_inode->i_ctime), 0); // Change time.
+    inode_set_mtime(inode, (signed)le32_to_cpu(raw_inode->i_mtime), 0); // Modification time.
+    inode->i_blocks = le32_to_cpu(raw_inode->i_blocks); // Number of blocks.
+    inode->i_size = le32_to_cpu(raw_inode->i_size); // File size.
+    if (i_size_read(inode) < 0) {
+        ret = -EUCLEAN; // Invalid file size.
+        brelse(bh); // Release the buffer head.
+        iget_failed(inode); // Clean up the inode allocation.
+        return ERR_PTR(ret); // Return the error.
+    }
 
-	} else if (S_ISDIR(inode->i_mode)) {
-		/* ? */
-		inode->i_op = &ext2_dir_inode_operations;
-		inode->i_fop = &ext2_dir_operations;
-		inode->i_mapping->a_ops = &ext2_aops;
-	} else if (S_ISLNK(inode->i_mode)) {
-		if (ext2_inode_is_fast_symlink(inode)) {
-			inode->i_op = &simple_symlink_inode_operations;
-			inode->i_link = (char *)ei->i_data;
-			nd_terminate_link(ei->i_data, inode->i_size, sizeof(ei->i_data) - 1);
-		} else {
-			inode->i_op = &page_symlink_inode_operations;
-			inode_nohighmem(inode);
-			inode->i_mapping->a_ops = &ext2_aops;
-		}
-	} else {
-		inode->i_op = &ext2_special_inode_operations;
-		if (raw_inode->i_block[0])
-			init_special_inode(inode, inode->i_mode,
-			   old_decode_dev(le32_to_cpu(raw_inode->i_block[0])));
-		else 
-			init_special_inode(inode, inode->i_mode,
-			   new_decode_dev(le32_to_cpu(raw_inode->i_block[1])));
-	}
+    /*
+     * Set up the {inode,file}_operations structures depending on the file type.
+     */
+    if (S_ISREG(inode->i_mode)) {
+        // Regular file.
+        inode->i_op = &ext2_file_inode_operations; // Inode operations.
+        inode->i_fop = &ext2_file_operations; // File operations.
+        inode->i_mapping->a_ops = &ext2_aops; // Address space operations.
+    } else if (S_ISDIR(inode->i_mode)) {
+        // Directory.
+        inode->i_op = &ext2_dir_inode_operations; // Inode operations.
+        inode->i_fop = &ext2_dir_operations; // File operations.
+        inode->i_mapping->a_ops = &ext2_aops; // Address space operations.
+    } else if (S_ISLNK(inode->i_mode)) {
+        // Symbolic link.
+        if (ext2_inode_is_fast_symlink(inode)) {
+            // Fast symlink (stored in the inode itself).
+            inode->i_op = &simple_symlink_inode_operations; // Inode operations.
+            inode->i_link = (char *)ei->i_data; // Pointer to the symlink target.
+            nd_terminate_link(ei->i_data, inode->i_size, sizeof(ei->i_data) - 1); // Null-terminate the symlink.
+        } else {
+            // Slow symlink (stored in a separate block).
+            inode->i_op = &page_symlink_inode_operations; // Inode operations.
+            inode_nohighmem(inode); // Disable high memory mapping.
+            inode->i_mapping->a_ops = &ext2_aops; // Address space operations.
+        }
+    } else {
+        // Special file (e.g., device, FIFO, socket).
+        inode->i_op = &ext2_special_inode_operations; // Inode operations.
+        if (raw_inode->i_block[0])
+            init_special_inode(inode, inode->i_mode,
+               old_decode_dev(le32_to_cpu(raw_inode->i_block[0]))); // Decode device number.
+        else
+            init_special_inode(inode, inode->i_mode,
+               new_decode_dev(le32_to_cpu(raw_inode->i_block[1]))); // Decode device number.
+    }
 
-	/*
-	 * Fill the necessary fields of the ext2_inode_info structure.
-	 */
-	ei = EXT2_I(inode);
-	ei->i_dtime = le32_to_cpu(raw_inode->i_dtime);
-	ei->i_flags = le32_to_cpu(raw_inode->i_flags);
-	ext2_set_inode_flags(inode);
-	ei->i_dtime = 0;
-	ei->i_state = 0;
-	ei->i_block_group = (ino - 1) / EXT2_INODES_PER_GROUP(inode->i_sb);
-	//> NOTE! The in-memory inode i_data array is in little-endian order
-	//> even on big-endian machines: we do NOT byteswap the block numbers!
-	for (n = 0; n < EXT2_N_BLOCKS; n++)
-		ei->i_data[n] = raw_inode->i_block[n];
+    /*
+     * Fill the necessary fields of the ext2_inode_info structure.
+     */
+    ei = EXT2_I(inode); // Get the ext2-specific inode information.
+    ei->i_dtime = le32_to_cpu(raw_inode->i_dtime); // Deletion time.
+    ei->i_flags = le32_to_cpu(raw_inode->i_flags); // Inode flags.
+    ext2_set_inode_flags(inode); // Set inode flags in the VFS inode.
+    ei->i_dtime = 0; // Reset deletion time.
+    ei->i_state = 0; // Reset inode state.
+    ei->i_block_group = (ino - 1) / EXT2_INODES_PER_GROUP(inode->i_sb); // Block group of the inode.
+    // Copy block numbers from the raw inode to the in-memory inode.
+    for (n = 0; n < EXT2_N_BLOCKS; n++)
+        ei->i_data[n] = raw_inode->i_block[n];
 
-	brelse(bh);
-	unlock_new_inode(inode);
-	return inode;
+    brelse(bh); // Release the buffer head.
+    unlock_new_inode(inode); // Unlock the inode.
+    return inode; // Return the inode.
 }
 
 static int ext2_do_write_inode(struct inode *inode, int do_sync)
