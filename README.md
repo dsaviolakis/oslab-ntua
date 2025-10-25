@@ -4,7 +4,7 @@
 
 - [Alexandra Chelidoni](https://github.com/alexomegas)
 
-- Dimitrios Saviolakis
+- [Dimitrios Saviolakis](https://github.com/dsaviolakis)
 
 ## Assignment 1: Riddle Challenge
 
