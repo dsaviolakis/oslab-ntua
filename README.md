@@ -1,2 +1,9 @@
-# OSLab-2024
-Private repository for the NTUA course "Operating Systems Laboratory".
+# Operating Systems Laboratory @ NTUA
+
+
+
+Students (equal contribution):
+
+- Alexandra Chelidoni (https://github.com/alexomegas)
+
+- Dimitrios Saviolakis
