@@ -1,6 +1,6 @@
 # Operating Systems Laboratory @ NTUA
 
-## Students (equal contribution):
+## Students:
 
 - [Alexandra Chelidoni](https://github.com/alexomegas)
 
